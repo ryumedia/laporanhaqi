@@ -1,475 +1,486 @@
 <!DOCTYPE html>
-<html lang="id" class="h-full">
+<html lang="id">
 <head>
+    <!-- Metadata penting untuk responsivitas -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registrasi Kegiatan</title>
+    <title>Laporan Kegiatan HAQI</title>
+    <!-- Memuat Tailwind CSS dari CDN dan Lucide Icons -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <!-- Konfigurasi Tailwind untuk menggunakan font Inter dan menyesuaikan warna hijau -->
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
-            box-sizing: border-box;
-            width: 360px;
-            height: 640px;
-            margin: 0 auto;
-            overflow: hidden;
-            position: relative;
-            left: 50%;
-            transform: translateX(-50%);
+            font-family: 'Inter', sans-serif;
+            background-color: #f0fdf4; /* Background hijau lembut (green-50) */
         }
-        .qr-code {
-            width: 150px;
-            height: 150px;
-            background: white;
-            border: 2px solid #e5e7eb;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto;
+        /* Custom style untuk tombol link utama */
+        .btn-link {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.3), 0 4px 6px -2px rgba(5, 150, 105, 0.05);
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-green-600 to-emerald-800 font-sans">
-    <main class="h-full flex flex-col">
-        <!-- Header -->
-        <header class="bg-green-800/20 backdrop-blur-sm p-3 text-center border-b border-green-300/20">
-            <img src="https://blogger.googleusercontent.com/img/a/AVvXsEj73RW53O3BQuQdL07frUji9vbVo8MWkPBuNpWCV_GEMFglevINHdtpEfIMfHCkwlx7un1m7rCvEH1u7VzFZFVXgRvgd8JldQEO0c8WS5l9S41DOBYoUQ9J-BX4zmku9_DRipeMkNezZsgUtAIwEsEs6MgiblgrZ3pv1lNAMH-h2nTg3IG4t12Amwv570k" alt="Logo KOTAQU" class="w-20 h-20 mx-auto mb-2 rounded-full" onerror="this.src=''; this.alt='Logo gagal dimuat'; this.style.display='none';">
-            <h1 class="text-lg font-bold text-white">Halaqoh Qur'ani (HAQI) 2</h1>
-            <p class="text-white/90 text-xs font-medium">KOTAQU (Komunitas Pecinta Qur'an)</p>
-            <p class="text-white/80 text-xs mt-1">Masukkan nama untuk mendapatkan QR Code</p>
+<body class="min-h-screen flex items-start justify-center p-4 sm:p-8">
+
+    <!-- Kontainer Utama: Dibatasi lebarnya dan diposisikan di tengah -->
+    <div id="appContainer" class="w-full max-w-xl bg-white rounded-3xl shadow-xl p-6 sm:p-10 mt-8">
+        
+        <!-- Header Global (Logo dan Judul) -->
+        <header class="text-center mb-10">
+            <!-- Logo Kegiatan HAQI -->
+            <div class="mb-4">
+                <img id="mainLogo" src="https://blogger.googleusercontent.com/img/a/AVvXsEj73RW53O3BQuQdL07frUji9vbVo8MWkPBuNpWCV_GEMFglevINHdtpEfIMfHCkwlx7un1m7rCvEH1u7VzFZFVXgRvgd8JldQEO0c8WS5l9S41DOBYoUQ9J-BX4zmku9_DRipeMkNezZsgUtAIwEsEs6MgiblgrZ3pv1lNAMH-h2nTg3IG4t12Amwv570k" 
+                     alt="Logo Kegiatan HAQI" 
+                     class="w-24 h-24 rounded-full mx-auto object-cover shadow-lg border-4 border-green-400"
+                     onerror="this.onerror=null; this.src='https://placehold.co/96x96/059669/ffffff?text=HAQI+Logo+Error';">
+            </div>
+            <!-- Catatan: H1 ini akan diperbarui oleh JS saat masuk ke detail view -->
+            <h1 class="text-2xl sm:text-2xl font-extrabold text-gray-900 mb-2">
+                Laporan Kegiatan HAQI
+            </h1>
+            <p class="text-lg sm:text-lg font-medium text-green-600">
+                Halaqoh Qur'ani Ujungberung
+            </p>
         </header>
 
-        <!-- Content Area -->
-        <div class="flex-1 flex flex-col justify-center px-4 py-2">
-            <!-- Registration Form -->
-            <div id="registrationForm" class="bg-white rounded-xl shadow-xl p-4 mb-3">
-                <form id="regForm" class="space-y-3">
-                    <!-- Status Registrasi -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Status Registrasi
-                        </label>
-                        <div class="space-y-2">
-                            <label class="flex items-center">
-                                <input 
-                                    type="radio" 
-                                    name="registrationStatus" 
-                                    value="sudah_daftar"
-                                    class="mr-2 text-green-600 focus:ring-green-500"
-                                    onchange="toggleRegistrationFields()"
-                                >
-                                <span class="text-sm text-gray-700">Sudah Daftar</span>
-                            </label>
-                            <label class="flex items-center">
-                                <input 
-                                    type="radio" 
-                                    name="registrationStatus" 
-                                    value="belum_daftar"
-                                    class="mr-2 text-green-600 focus:ring-green-500"
-                                    onchange="toggleRegistrationFields()"
-                                >
-                                <span class="text-sm text-gray-700">Belum Daftar</span>
-                            </label>
-                        </div>
-                    </div>
 
-                    <!-- Form untuk Belum Daftar -->
-                    <div id="newRegistrationFields" class="space-y-3 hidden">
-                        <div>
-                            <label for="participantName" class="block text-sm font-medium text-gray-700 mb-1">
-                                Nama Lengkap
-                            </label>
-                            <input 
-                                type="text" 
-                                id="participantName" 
-                                name="participantName"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base"
-                                placeholder="Masukkan nama lengkap Anda"
-                            >
-                        </div>
+        <!-- ==================================== -->
+        <!-- 1. TAMPILAN MENU UTAMA (HOME) -->
+        <!-- ==================================== -->
+        <div id="mainMenu">
+            <h2 class="text-md font-semibold text-gray-700 mb-6 text-center">Pilih Laporan Kegiatan:</h2>
+            <main class="space-y-4">
+                
+                <!-- Tombol 1: HAQI #1 -->
+                <button onclick="showActivityDetail('haqi1')"
+                    class="btn-link flex items-center justify-center w-full text-center bg-green-600 text-white py-4 rounded-xl font-semibold text-base sm:text-md shadow-lg hover:bg-green-700 transition duration-300">
+                    HAQI #1: Al Qur'an Alat Hidup Kita
+                </button>
 
-                        <div>
-                            <label for="phoneNumber" class="block text-sm font-medium text-gray-700 mb-1">
-                                Nomor HP
-                            </label>
-                            <input 
-                                type="tel" 
-                                id="phoneNumber" 
-                                name="phoneNumber"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base"
-                                placeholder="Contoh: 08123456789"
-                            >
-                        </div>
+                <!-- Tombol 2: HAQI #2 -->
+                <button onclick="showActivityDetail('haqi2')"
+                    class="btn-link flex items-center justify-center w-full text-center bg-green-600 text-white py-4 rounded-xl font-semibold text-base sm:text-md shadow-lg hover:bg-green-700 transition duration-300">
+                    HAQI #2: Menghafal Dengan Sepenuh Hati
+                </button>
 
-                        <div>
-                            <label for="kecamatan" class="block text-sm font-medium text-gray-700 mb-1">
-                                Kecamatan
-                            </label>
-                            <select 
-                                id="kecamatan" 
-                                name="kecamatan"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base"
-                            >
-                                <option value="">Pilih Kecamatan</option>
-                                <option value="UJUNGBERUNG">UJUNGBERUNG</option>
-                                <option value="CINAMBO">CINAMBO</option>
-                            </select>
-                        </div>
+                <!-- Tombol 3: HAQI #3 -->
+                <button onclick="showActivityDetail('haqi3')"
+                    class="btn-link flex items-center justify-center w-full text-center bg-green-600 text-white py-4 rounded-xl font-semibold text-base sm:text-md shadow-lg hover:bg-green-700 transition duration-300">
+                    HAQI #3: Biar Al Qur'an Yang Ngejaga Kamu
+                </button>
+            
+                 <!-- Tombol BARU: HAQI #4 (Tambahan) - DISMEBUNYIKAN SEMENTARA DENGAN CLASS 'hidden' -->
+                <button onclick="showActivityDetail('haqi4')"
+                    class="hidden btn-link flex items-center justify-center w-full text-center bg-green-600 text-white py-4 rounded-xl font-semibold text-base sm:text-md shadow-lg hover:bg-green-700 transition duration-300">
+                    HAQI #4: [TEMA BARU ANDA DI SINI]
+                </button>
+            
+            </main>
+        </div>
 
-                        <div>
-                            <label for="kelurahan" class="block text-sm font-medium text-gray-700 mb-1">
-                                Kelurahan
-                            </label>
-                            <select 
-                                id="kelurahan" 
-                                name="kelurahan"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base"
-                            >
-                                <option value="">Pilih Kelurahan</option>
-                                <option value="PASIRENDAH">PASIRENDAH</option>
-                                <option value="CIGENDING">CIGENDING</option>
-                                <option value="PASIRWANGI">PASIRWANGI</option>
-                                <option value="PASIRJATI">PASIRJATI</option>
-                                <option value="PASANGGRAHAN">PASANGGRAHAN</option>
-                                <option value="BABAKAN PENGHULU">BABAKAN PENGHULU</option>
-                                <option value="CISARANTEN WETAN">CISARANTEN WETAN</option>
-                                <option value="PAKEMITAN">PAKEMITAN</option>
-                                <option value="SUKAMULYA">SUKAMULYA</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Form untuk Sudah Daftar -->
-                    <div id="existingRegistrationFields" class="space-y-3 hidden">
-                        <div>
-                            <label for="existingParticipant" class="block text-sm font-medium text-gray-700 mb-1">
-                                Pilih Nama Lengkap
-                            </label>
-                            <select 
-                                id="existingParticipant" 
-                                name="existingParticipant"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-base"
-                                onchange="showParticipantInfo()"
-                            >
-                                <option value="">Pilih Nama Peserta</option>
-                                <option value="0">Achmad Ghozali</option>
-                                <option value="1">Adilla Sayyeda Khadija</option>
-                                <option value="2">Aisyah</option>
-                                <option value="3">Almira Naaz Abdillah</option>
-                                <option value="4">Amah</option>
-                                <option value="5">Anita Asmara</option>
-                                <option value="6">Ati Supriyati</option>
-                                <option value="7">ayi gustaman</option>
-                                <option value="8">Burhan Nurhasan</option>
-                                <option value="9">Dati Damilah</option>
-                                <option value="10">Dodi Gunadi</option>
-                                <option value="11">Elly Herlina</option>
-                                <option value="12">Euis Sholihah</option>
-                                <option value="13">Fani Afriyani Susilawati</option>
-                                <option value="14">Fera Berliani</option>
-                                <option value="15">Imas Asaroh</option>
-                                <option value="16">Inu yuniarti</option>
-                                <option value="17">Kartika Una Juwita</option>
-                                <option value="18">Lailla Kodryati</option>
-                                <option value="19">Murniati</option>
-                                <option value="20">Nenden Heny Hermayanti</option>
-                                <option value="21">Ngatini</option>
-                                <option value="22">Nining holilah</option>
-                                <option value="23">Ninuk Minarsih</option>
-                                <option value="24">Novianti</option>
-                                <option value="25">Nur Aemi</option>
-                                <option value="26">Nurdini homsah</option>
-                                <option value="27">Nurhalimah</option>
-                                <option value="28">Nurrachmah</option>
-                                <option value="29">oky christianingrum</option>
-                                <option value="30">Ratih Kesuma Dewi</option>
-                                <option value="31">Retno Fadilah</option>
-                                <option value="32">Rina Marinnisa</option>
-                                <option value="33">Rosalia Soepena</option>
-                                <option value="34">Sandra Chendrawasih</option>
-                                <option value="35">Saripudin</option>
-                                <option value="36">Siti Aminah</option>
-                                <option value="37">Siti Mariah R</option>
-                                <option value="38">Siti Patonah</option>
-                                <option value="39">Sri Gustiany Dewi</option>
-                                <option value="40">Tuti Mirawati</option>
-                                <option value="41">Yan Alfaroby</option>
-                                <option value="42">Yanti fatmawati</option>
-                                <option value="43">Yarnes Syam</option>
-                                <option value="44">Yuyu yutini</option>
-                            </select>
-                        </div>
-
-                        <!-- Info Peserta -->
-                        <div id="participantInfo" class="bg-gray-50 p-3 rounded-lg hidden">
-                            <h3 class="text-sm font-semibold text-gray-800 mb-2">Informasi Peserta:</h3>
-                            <div class="space-y-1 text-sm text-gray-700">
-                                <p><span class="font-medium">Nama Lengkap:</span> <span id="infoName">-</span></p>
-                                <p><span class="font-medium">Nomor WA:</span> <span id="infoPhone">-</span></p>
-                                <p><span class="font-medium">Kecamatan:</span> <span id="infoKecamatan">-</span></p>
-                                <p><span class="font-medium">Kelurahan:</span> <span id="infoKelurahan">-</span></p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Error Message -->
-                    <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">
-                    </div>
-                    
-                    <button 
-                        type="submit"
-                        id="submitButton"
-                        class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 text-base disabled:bg-gray-400"
-                        disabled
-                    >
-                        Daftar Sekarang
-                    </button>
-                </form>
+        <!-- ==================================== -->
+        <!-- 2. TAMPILAN DETAIL KEGIATAN -->
+        <!-- ==================================== -->
+        <div id="detailView" class="hidden">
+            
+            <!-- Tombol Kembali -->
+            <button onclick="showMainMenu()" class="flex items-center text-green-600 font-semibold mb-6 hover:text-green-800 transition duration-150">
+                <i data-lucide="chevron-left" class="w-5 h-5 mr-1"></i> Kembali ke Daftar Laporan
+            </button>
+            
+            <!-- Poster Kegiatan -->
+            <div class="mb-8 rounded-xl overflow-hidden shadow-xl border-2 border-green-200">
+                <img id="activityPoster" 
+                     src="" 
+                     alt="Poster Kegiatan" 
+                     class="w-full h-auto object-cover"
+                     onerror="this.onerror=null; this.src='https://placehold.co/600x400/059669/ffffff?text=POSTER+TIDAK+DITEMUKAN';">
             </div>
 
-            <!-- QR Code Result -->
-            <div id="qrResult" class="bg-white rounded-xl shadow-xl p-4 hidden">
-                <div class="text-center">
-                    <div class="mb-3">
-                        <h2 class="text-gray-600 text-sm">Ahlan Wasahlan, <span id="registeredName" class="font-semibold text-green-600"></span></h2>
-			<p class="text-lg font-bold text-gray-800 mb-1">Tunjukan QR Code ini ke Panitia</p>
-                        
-                    </div>
-                    
-                    <!-- QR Code Display -->
-                    <div class="qr-code rounded-lg mb-3" id="qrCodeDisplay">
-                        <canvas id="qrCanvas" width="150" height="150"></canvas>
-                    </div>
-                    
-                    <div class="text-xs text-gray-500 mb-3">
-                        <p>ID Peserta: <span id="participantId" class="font-mono font-semibold"></span></p>
-                        <p>Waktu Registrasi: <span id="registrationTime"></span></p>
-                    </div>
-                    
-                    <button 
-                        onclick="resetForm()"
-                        class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 text-sm"
-                    >
-                        Daftar Peserta Lain
+            <!-- Bagian Tombol dan Collapse -->
+            <div class="space-y-3" id="detailLinks">
+                
+                <!-- 1. Deskripsi singkat (Text Collapse/Accordion) -->
+                <div class="border border-green-300 rounded-xl overflow-hidden">
+                    <button id="btn-desc" onclick="toggleCollapse('desc')" 
+                        class="w-full flex justify-between items-center p-4 bg-green-100 text-green-800 font-bold hover:bg-green-200 transition duration-150">
+                        <span>1. Deskripsi Singkat</span>
+                        <i id="icon-desc" data-lucide="chevron-down" class="w-5 h-5"></i>
                     </button>
+                    <!-- Konten akan diisi oleh JS -->
+                    <div id="content-desc" class="p-4 bg-white text-gray-700 hidden"></div>
+                </div>
+                
+                <!-- BARU: 2. Lokasi Kegiatan (Text Collapse/Accordion) -->
+                <div class="border border-green-300 rounded-xl overflow-hidden">
+                    <button id="btn-location" onclick="toggleCollapse('location')" 
+                        class="w-full flex justify-between items-center p-4 bg-green-100 text-green-800 font-bold hover:bg-green-200 transition duration-150">
+                        <span>2. Lokasi Kegiatan</span>
+                        <i id="icon-location" data-lucide="chevron-down" class="w-5 h-5"></i>
+                    </button>
+                    <!-- Konten akan diisi oleh JS, termasuk Nama Lokasi dan Tombol Map -->
+                    <div id="content-location" class="p-4 bg-white text-gray-700 hidden"></div>
+                </div>
+
+                <!-- 3. Peserta HAQI (Hyperlink) - PENOMORAN BARU (sebelumnya 2) -->
+                <a id="link-peserta" href="#" class="flex items-center justify-between w-full p-4 bg-green-600 text-white rounded-xl font-semibold text-base shadow-md hover:bg-green-700 transition duration-300">
+                    <span>3. Peserta HAQI <span class="text-sm opacity-80">(Presensi Kehadiran)</span></span>
+                    <i data-lucide="external-link" class="w-5 h-5"></i>
+                </a>
+
+                <!-- 4. Ringkasan Materi (Text Collapse/Accordion) - PENOMORAN BARU (sebelumnya 3) -->
+                <div class="border border-green-300 rounded-xl overflow-hidden">
+                    <button id="btn-summary" onclick="toggleCollapse('summary')" 
+                        class="w-full flex justify-between items-center p-4 bg-green-100 text-green-800 font-bold hover:bg-green-200 transition duration-150">
+                        <span>4. Ringkasan Materi</span>
+                        <i id="icon-summary" data-lucide="chevron-down" class="w-5 h-5"></i>
+                    </button>
+                    <!-- Konten akan diisi oleh JS -->
+                    <div id="content-summary" class="p-4 bg-white text-gray-700 hidden"></div>
+                </div>
+
+                <!-- 5. Materi Kegiatan (Hyperlink) - PENOMORAN BARU (sebelumnya 4) -->
+                <a id="link-materi" href="#" class="flex items-center justify-between w-full p-4 bg-green-600 text-white rounded-xl font-semibold text-base shadow-md hover:bg-green-700 transition duration-300">
+                    <span>5. Materi Kegiatan <span class="text-sm opacity-80">(File Presentasi)</span></span>
+                    <i data-lucide="external-link" class="w-5 h-5"></i>
+                </a>
+
+                <!-- 6. Dokumentasi Kegiatan (Hyperlink) - PENOMORAN BARU (sebelumnya 5) -->
+                <a id="link-doc" href="#" class="flex items-center justify-between w-full p-4 bg-green-600 text-white rounded-xl font-semibold text-base shadow-md hover:bg-green-700 transition duration-300">
+                    <span>6. Dokumentasi Kegiatan <span class="text-sm opacity-80">(Galeri Foto & Video)</span></span>
+                    <i data-lucide="external-link" class="w-5 h-5"></i>
+                </a>
+
+                <!-- 7. Testimoni (Text Collapse/Accordion) - PENOMORAN BARU (sebelumnya 6) -->
+                <div class="border border-green-300 rounded-xl overflow-hidden">
+                    <button id="btn-testi" onclick="toggleCollapse('testi')" 
+                        class="w-full flex justify-between items-center p-4 bg-green-100 text-green-800 font-bold hover:bg-green-200 transition duration-150">
+                        <span>7. Testimoni</span>
+                        <i id="icon-testi" data-lucide="chevron-down" class="w-5 h-5"></i>
+                    </button>
+                    <!-- Konten akan diisi oleh JS -->
+                    <div id="content-testi" class="p-4 bg-white text-gray-700 hidden"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Footer -->
-        <footer class="bg-green-800/20 backdrop-blur-sm p-2 text-center border-t border-green-300/20">
-            <p class="text-white/70 text-xs">© 2025 KOTAQU - Komunitas Pecinta Qur'an</p>
-        </footer>
-    </main>
+    </div>
 
     <script>
-        // Data peserta yang sudah terdaftar (diurutkan alfabetis)
-        const existingParticipants = [
-            {name: "Achmad Ghozali", phone: "085224131324", kecamatan: "UJUNGBERUNG", kelurahan: "PASANGGRAHAN"},
-            {name: "Adilla Sayyeda Khadija", phone: "087846445131", kecamatan: "UJUNGBERUNG", kelurahan: "PASANGGRAHAN"},
-            {name: "Aisyah", phone: "082240031311", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRJATI"},
-            {name: "Almira Naaz Abdillah", phone: "081573344909", kecamatan: "UJUNGBERUNG", kelurahan: "PASANGGRAHAN"},
-            {name: "Amah", phone: "089647050032", kecamatan: "CINAMBO", kelurahan: "SUKAMULYA"},
-            {name: "Anita Asmara", phone: "081546925706", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRENDAH"},
-            {name: "Ati Supriyati", phone: "081282248160", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRJATI"},
-            {name: "ayi gustaman", phone: "089654813199", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRENDAH"},
-            {name: "Burhan Nurhasan", phone: "08815729350", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRJATI"},
-            {name: "Dati Damilah", phone: "089606440220", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRWANGI"},
-            {name: "Dodi Gunadi", phone: "082227033385", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRENDAH"},
-            {name: "Elly Herlina", phone: "082110020267", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRJATI"},
-            {name: "Euis Sholihah", phone: "085695988551", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRENDAH"},
-            {name: "Fani Afriyani Susilawati", phone: "082129269513", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRENDAH"},
-            {name: "Fera Berliani", phone: "085134229323", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRENDAH"},
-            {name: "Imas Asaroh", phone: "085798427802", kecamatan: "UJUNGBERUNG", kelurahan: "CIGENDING"},
-            {name: "Inu yuniarti", phone: "087750011312", kecamatan: "UJUNGBERUNG", kelurahan: "PASANGGRAHAN"},
-            {name: "Kartika Una Juwita", phone: "081546449154", kecamatan: "CINAMBO", kelurahan: "CISARANTEN WETAN"},
-            {name: "Lailla Kodryati", phone: "087876894603", kecamatan: "UJUNGBERUNG", kelurahan: "CIGENDING"},
-            {name: "Murniati", phone: "081321038058", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRWANGI"},
-            {name: "Nenden Heny Hermayanti", phone: "83148757815", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRENDAH"},
-            {name: "Ngatini", phone: "083822907972", kecamatan: "UJUNGBERUNG", kelurahan: "CIGENDING"},
-            {name: "Nining holilah", phone: "081280198064", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRENDAH"},
-            {name: "Ninuk Minarsih", phone: "087821982244", kecamatan: "UJUNGBERUNG", kelurahan: "CIGENDING"},
-            {name: "Novianti", phone: "081287177377", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRENDAH"},
-            {name: "Nur Aemi", phone: ".", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRENDAH"},
-            {name: "Nurdini homsah", phone: "089691702444", kecamatan: "UJUNGBERUNG", kelurahan: "CIGENDING"},
-            {name: "Nurhalimah", phone: "085265907790", kecamatan: "CINAMBO", kelurahan: "SUKAMULYA"},
-            {name: "Nurrachmah", phone: "081223539850", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRWANGI"},
-            {name: "oky christianingrum", phone: "082219609600", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRWANGI"},
-            {name: "Ratih Kesuma Dewi", phone: ".", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRWANGI"},
-            {name: "Retno Fadilah", phone: "081322341464", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRENDAH"},
-            {name: "Rina Marinnisa", phone: "081321331133", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRJATI"},
-            {name: "Rosalia Soepena", phone: "081310243503", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRENDAH"},
-            {name: "Sandra Chendrawasih", phone: "08158948557", kecamatan: "UJUNGBERUNG", kelurahan: "PASANGGRAHAN"},
-            {name: "Saripudin", phone: "081573050820", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRJATI"},
-            {name: "Siti Aminah", phone: "0818224720", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRJATI"},
-            {name: "Siti Mariah R", phone: "085162733710", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRENDAH"},
-            {name: "Siti Patonah", phone: "085723529664", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRJATI"},
-            {name: "Sri Gustiany Dewi", phone: "082126600337", kecamatan: "UJUNGBERUNG", kelurahan: "CIGENDING"},
-            {name: "Tuti Mirawati", phone: "082111597361", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRWANGI"},
-            {name: "Yan Alfaroby", phone: "081933136472", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRJATI"},
-            {name: "Yanti fatmawati", phone: "081394459905", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRENDAH"},
-            {name: "Yarnes Syam", phone: "081298644575", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRWANGI"},
-            {name: "Yuyu yutini", phone: "083193561900", kecamatan: "UJUNGBERUNG", kelurahan: "PASIRENDAH"}
-        ];
+        // =========================================================
+        // LOKASI EDIT DATA UTAMA (activityData)
+        // SILAKAN EDIT PROPERTI DI BAWAH INI UNTUK TIAP KEGIATAN
+        // =========================================================
+        const activityData = {
+            haqi1: {
+                title: "HAQI #1: Al Qur'an Alat Hidup Kita",
+                posterUrl: "https://blogger.googleusercontent.com/img/a/AVvXsEgmzhoSpJYdFi3tTdaffIKskx-5T47k1TkxgQrGEcolp3Ft5g1IxoyLfB0pNtRkxV32Bn6C29rjY6rpdAUi8vXqeQCoQvQPU0xpjRWM4O7t2kaKFVtOxS3zwsqR3fcgJMgkZ7ndWy_yy_m6br-7HS9nhMNMa_taYFIyTMlvqiKwwn9PT78En_WuZ3LaSzA",
+                
+                // BARU: Data Lokasi
+                locationName: "Masjid Baitul Muttaqin - Komplek Gending Mas - Pasirjati",
+                locationMapUrl: "https://maps.app.goo.gl/Rz4x8usMLF6snnPQ7",
+                
+                // Hyperlink URLs
+                pesertaLink: "#", // Ganti dengan link Data Peserta HAQI #1
+                materiLink: "#", // Ganti dengan link Materi Kegiatan HAQI #1
+                dokumentasiLink: "#", // Ganti dengan link Dokumentasi HAQI #1
 
-        function showParticipantInfo() {
-            const select = document.getElementById('existingParticipant');
-            const infoDiv = document.getElementById('participantInfo');
-            
-            if (select.value === '') {
-                infoDiv.classList.add('hidden');
-                return;
+                // Konten Text Collapse (Deskripsi Singkat)
+                descriptionContent: `
+                    <p class="font-bold mb-2 text-green-700">-- Konten HAQI #1: Deskripsi Singkat --</p>
+                    <p>Laporan ini merangkum seluruh rangkaian kegiatan Halaqoh Qur'ani Ujungberung (HAQI) seri pertama yang bertema "Al Qur'an Alat Hidup Kita". Kegiatan ini bertujuan untuk memperkuat pemahaman peserta tentang peran Al-Qur'an sebagai pedoman utama dalam kehidupan sehari-hari.</p>
+                    <p class="mt-2">Fokus materi adalah pada pengamalan praktis dan dampaknya pada pembentukan karakter. Acara dihadiri oleh 75 peserta dari berbagai kelompok usia.</p>
+                `,
+
+                // Konten Text Collapse (Ringkasan Materi)
+                summaryContent: `
+                    <p class="font-bold mb-2 text-green-700">-- Konten HAQI #1: Ringkasan Materi --</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>**Sesi 1: Konsep Dasar:** Membahas kedudukan Al-Qur'an sebagai *Way of Life* (Manhajul Hayat).</li>
+                        <li>**Sesi 2: Implementasi:** Diskusi tentang cara mengintegrasikan nilai-nilai Qur'ani dalam pengambilan keputusan, pekerjaan, dan hubungan sosial.</li>
+                        <li>**Kesimpulan:** Menegaskan pentingnya konsistensi membaca, mentadabburi, dan mengamalkan setiap ayat.</li>
+                    </ul>
+                `,
+
+                // Konten Text Collapse (Testimoni) - Dibuat dua contoh
+                testimonialContent: `
+                    <p class="font-bold mb-2 text-green-700">-- Konten HAQI #1: Testimoni --</p>
+                    <!-- Testimoni 1 -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600 mb-4 pb-4 border-b border-green-200">
+                        "Alhamdulillah, setelah mengikuti sesi ini, saya merasa pandangan hidup saya lebih terarah. Al-Qur'an bukan lagi sekadar bacaan, tapi benar-benar menjadi panduan di setiap langkah."
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- Ibu Fatimah (Peserta Dewasa)</footer>
+                    </blockquote>
+                    <!-- Testimoni 2 -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600">
+                        "Metode penyampaiannya santai tapi berbobot. Saya jadi lebih semangat mengoreksi diri dan menjadikan Al-Qur'an sebagai alarm harian."
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- Bpk. Ali (Peserta Muda)</footer>
+                    </blockquote>
+                `,
+            },
+
+            haqi2: {
+                title: "HAQI #2: Menghafal Dengan Sepenuh Hati",
+                posterUrl: "https://blogger.googleusercontent.com/img/a/AVvXsEilXXkU34ZLGVy1662Q_DIAUBDe-Dje_-hPk2XbRvUHwlOQJWp_ZM1Q3DhRF-XEfkXosMLkZhk6vUFIOqaijXUn0k8GzcRDk7gC1s21QLLCYc087ATB1JYKc7ZOYKy8rAMkeerEJrFVULqV8YTgArrB4taZydyF2AkLrzpOs-Qe2EnFEgFq6Y9GteVHQnw", 
+                
+                // BARU: Data Lokasi (Dummy)
+                locationName: "Lokasi HAQI 2 (Contoh Dummy) - Jl. Dummy No. 123",
+                locationMapUrl: "https://maps.app.goo.gl/dummy2",
+                
+                // Hyperlink URLs
+                pesertaLink: "#", // Ganti dengan link Data Peserta HAQI #2
+                materiLink: "#", // Ganti dengan link Materi Kegiatan HAQI #2
+                dokumentasiLink: "#", // Ganti dengan link Dokumentasi HAQI #2
+
+                // Konten Text Collapse (Deskripsi Singkat)
+                descriptionContent: `
+                    <p class="font-bold mb-2 text-green-700">-- Konten HAQI #2: Deskripsi Singkat --</p>
+                    <p>Sesi kedua HAQI fokus pada teknik dan motivasi menghafal Al-Qur'an secara efektif, bertema "Menghafal Dengan Sepenuh Hati". Kegiatan ini menekankan pentingnya niat, konsistensi, dan suasana hati yang tenang dalam proses *hifz*.
+                    <p class="mt-2">Workshop ini mencakup praktik metode menghafal cepat dan cara menjaga hafalan (*muraja'ah*) agar tidak mudah hilang. Peserta ditargetkan dapat memulai atau meningkatkan target hafalannya.</p>
+                `,
+
+                // Konten Text Collapse (Ringkasan Materi)
+                summaryContent: `
+                    <p class="font-bold mb-2 text-green-700">-- Konten HAQI #2: Ringkasan Materi --</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>**Metode Menghafal:** Teknik pengulangan 10 kali, metode visual, dan audial.</li>
+                        <li>**Manajemen Waktu:** Tips mengatur jadwal harian untuk *muraja'ah* (mengulang hafalan).</li>
+                        <li>**Motivasi:** Kisah inspiratif penghafal Al-Qur'an dan keutamaan menjadi Ahlullah.</li>
+                    </ul>
+                `,
+
+                // Konten Text Collapse (Testimoni) - Dibuat dua contoh
+                testimonialContent: `
+                    <p class="font-bold mb-2 text-green-700">-- Konten HAQI #2: Testimoni --</p>
+                    <!-- Testimoni 1 -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600 mb-4 pb-4 border-b border-green-200">
+                        "Saya merasa kesulitan menghafal selama ini. Setelah ikut HAQI #2, saya menemukan metode yang cocok dan semangat saya kembali membara. Insha Allah, target satu juz tercapai tahun ini!"
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- Rian Hidayat (Peserta Remaja)</footer>
+                    </blockquote>
+                    <!-- Testimoni 2 -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600">
+                        "Sangat membantu para pengajar. Saya mendapatkan banyak ide baru untuk memotivasi anak-anak agar cinta menghafal. Workshop yang bermanfaat!"
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- Ibu Siti (Guru Ngaji)</footer>
+                    </blockquote>
+                `,
+            },
+
+            haqi3: {
+                title: "HAQI #3: Biar Al Qur'an Yang Ngejaga Kamu",
+                posterUrl: "https://blogger.googleusercontent.com/img/a/AVvXsEgrZ24nZ2GwUqDpd2DXIlyIAeoCrcWzt7IQBgjfNZnPBSdStdX01F0oIUHlUEI_AVbfRqp3il5XDWIBtCoRcV24Q8f37sJ2PKWP-_4LRYlw5457e5n5IxdxhUkCSAG5BDZdauIHbPHeH3oI8FkUpL1LgU3dU9SdLPW3EJKjyBTDZOEF09QlY7_zrufoTyA",
+                
+                // BARU: Data Lokasi (Dummy)
+                locationName: "Lokasi HAQI 3 (Contoh Dummy) - Pusat Kegiatan Ujungberung",
+                locationMapUrl: "https://maps.app.goo.gl/dummy3",
+                
+                // Hyperlink URLs
+                pesertaLink: "#", // Ganti dengan link Data Peserta HAQI #3
+                materiLink: "#", // Ganti dengan link Materi Kegiatan HAQI #3
+                dokumentasiLink: "#", // Ganti dengan link Dokumentasi HAQI #3
+                
+                // Konten Text Collapse (Deskripsi Singkat)
+                descriptionContent: `
+                    <p class="font-bold mb-2 text-green-700">-- Konten HAQI #3: Deskripsi Singkat --</p>
+                    <p>Kegiatan ketiga, "Biar Al Qur'an Yang Ngejaga Kamu", membahas peran Al-Qur'an sebagai syafa'at (penolong) dan pelindung di dunia dan akhirat. Fokusnya adalah pada keutamaan *istiqomah* dan keberkahan yang didapat dari interaksi intensif dengan kalamullah.</p>
+                    <p class="mt-2">Ditekankan bahwa penjagaan Allah datang melalui penjagaan kita terhadap Kitab-Nya. Sesi ini ditutup dengan muhasabah dan doa bersama.</p>
+                `,
+
+                // Konten Text Collapse (Ringkasan Materi)
+                summaryContent: `
+                    <p class="font-bold mb-2 text-green-700">-- Konten HAQI #3: Ringkasan Materi --</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>**Keutamaan Syafa'at:** Hadits-hadits tentang Al-Qur'an sebagai penolong di Hari Kiamat.</li>
+                        <li>**Amalan Penjagaan:** Pentingnya rutin membaca Surat Al-Kahfi, Al-Mulk, dan Al-Waqi'ah.</li>
+                        <li>**Istiqlal Diri:** Membentuk karakter yang mandiri dan tegar dengan berpegangan teguh pada Al-Qur'an.</li>
+                    </ul>
+                `,
+
+                // Konten Text Collapse (Testimoni) - Dibuat dua contoh
+                testimonialContent: `
+                    <p class="font-bold mb-2 text-green-700">-- Konten HAQI #3: Testimoni --</p>
+                    <!-- Testimoni 1 -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600 mb-4 pb-4 border-b border-green-200">
+                        "Ceramah kali ini benar-benar menyentuh hati. Saya merasa lebih tenang karena tahu ada 'penjaga' terkuat yang bisa saya pegang. Terima kasih, HAQI!"
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- Bpk. Hasan (Pengurus Masjid)</footer>
+                    </blockquote>
+                    <!-- Testimoni 2 -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600 mb-4 pb-4 border-b border-green-200">
+                        "Penjelasannya sangat mendalam mengenai perlindungan Al-Qur'an. Ini menjadi motivasi besar bagi kami untuk tidak pernah meninggalkan Al-Qur'an."
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- Sdr. Asep (Mahasiswa)</footer>
+                    </blockquote>
+                    <!-- Testimoni 3 -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600">
+                        "Penjelasannya sangat mendalam mengenai perlindungan Al-Qur'an. Ini menjadi motivasi besar bagi kami untuk tidak pernah meninggalkan Al-Qur'an."
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- Sdr. Ujang (Mahasiswa)</footer>
+                    </blockquote>
+                `,
+            },
+
+            // =========================================================
+            // TEMPLATE BARU UNTUK HAQI #4 (SILAKAN EDIT ISINYA)
+            // =========================================================
+            haqi4: {
+                title: "HAQI #4: [TEMA BARU ANDA DI SINI]",
+                // Ganti dengan URL poster HAQI #4
+                posterUrl: "https://placehold.co/600x400/059669/ffffff?text=POSTER+HAQI+4", 
+                
+                // BARU: Data Lokasi (Dummy)
+                locationName: "Lokasi HAQI 4 (Contoh Dummy) - Silakan Ganti",
+                locationMapUrl: "https://maps.app.goo.gl/dummy4",
+                
+                // Ganti dengan link Data Peserta HAQI #4
+                pesertaLink: "#", 
+                // Ganti dengan link Materi Kegiatan HAQI #4
+                materiLink: "#", 
+                // Ganti dengan link Dokumentasi HAQI #4
+                dokumentasiLink: "#", 
+                
+                // Konten Text Collapse (Deskripsi Singkat)
+                descriptionContent: `
+                    <p class="font-bold mb-2 text-green-700">-- Konten HAQI #4: Deskripsi Singkat --</p>
+                    <p>Ini adalah ringkasan kegiatan Halaqoh Qur'ani Ujungberung (HAQI) seri keempat. Silakan ganti teks ini dengan deskripsi singkat tentang tema dan tujuan utama kegiatan tersebut.</p>
+                    <p class="mt-2">Pastikan untuk mencantumkan detail penting seperti tanggal, jumlah peserta, dan fokus materi yang dibahas.</p>
+                `,
+
+                // Konten Text Collapse (Ringkasan Materi)
+                summaryContent: `
+                    <p class="font-bold mb-2 text-green-700">-- Konten HAQI #4: Ringkasan Materi --</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>**Sesi 1:** Tuliskan poin-poin penting materi di sini.</li>
+                        <li>**Sesi 2:** Tuliskan ringkasan pembahasan kedua.</li>
+                        <li>**Sesi 3:** Tuliskan kesimpulan atau tindak lanjut.</li>
+                    </ul>
+                `,
+
+                // Konten Text Collapse (Testimoni) - Gunakan format yang sama, pastikan hanya testimoni terakhir yang tanpa border-b
+                testimonialContent: `
+                    <p class="font-bold mb-2 text-green-700">-- Konten HAQI #4: Testimoni --</p>
+                    <!-- Testimoni 1 (Wajib ada border jika ada Testimoni 2) -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600 mb-4 pb-4 border-b border-green-200">
+                        "Testimoni pertama tentang HAQI #4. Ganti teks ini."
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- Nama Peserta 1</footer>
+                    </blockquote>
+                    <!-- Testimoni 2 (Tidak perlu border jika ini testimoni terakhir) -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600">
+                        "Testimoni kedua tentang HAQI #4. Ganti teks ini."
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- Nama Peserta 2</footer>
+                    </blockquote>
+                `,
             }
+        };
+
+        const mainMenu = document.getElementById('mainMenu');
+        const detailView = document.getElementById('detailView');
+        const activityPoster = document.getElementById('activityPoster');
+
+        /**
+         * Menampilkan tampilan detail kegiatan berdasarkan ID dan mengisi konten dinamis.
+         * @param {string} id - ID kegiatan ('haqi1', 'haqi2', 'haqi3', 'haqi4').
+         */
+        function showActivityDetail(id) {
+            const data = activityData[id];
             
-            const participant = existingParticipants[parseInt(select.value)];
+            // Mengisi Poster dan Hyperlink
+            activityPoster.src = data.posterUrl;
+            document.getElementById('link-peserta').href = data.pesertaLink;
+            document.getElementById('link-materi').href = data.materiLink;
+            document.getElementById('link-doc').href = data.dokumentasiLink;
+
+            // Mengisi Konten Collapse: 1. Deskripsi Singkat
+            document.getElementById('content-desc').innerHTML = data.descriptionContent;
             
-            document.getElementById('infoName').textContent = participant.name;
-            document.getElementById('infoPhone').textContent = participant.phone;
-            document.getElementById('infoKecamatan').textContent = participant.kecamatan;
-            document.getElementById('infoKelurahan').textContent = participant.kelurahan;
+            // Mengisi Konten Collapse BARU: 2. Lokasi Kegiatan (Nama Lokasi & Link Map)
+            document.getElementById('content-location').innerHTML = `
+                <p class="font-bold mb-3 text-green-700">Nama Lokasi:</p>
+                <p class="text-lg font-semibold mb-4">${data.locationName}</p>
+                <a href="${data.locationMapUrl}" target="_blank" class="flex items-center justify-center w-full p-3 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition duration-200">
+                    Lihat di Google Maps
+                    <i data-lucide="map-pin" class="w-4 h-4 ml-2"></i>
+                </a>
+            `;
             
-            infoDiv.classList.remove('hidden');
+            // Mengisi Konten Collapse: 4. Ringkasan Materi
+            document.getElementById('content-summary').innerHTML = data.summaryContent;
+            // Mengisi Konten Collapse: 7. Testimoni
+            document.getElementById('content-testi').innerHTML = data.testimonialContent;
+            
+            // Sembunyikan menu utama, tampilkan detail view
+            mainMenu.classList.add('hidden');
+            detailView.classList.remove('hidden');
+
+            // Set judul utama halaman di atas (H1) menjadi judul laporan spesifik
+            document.querySelector('header h1').textContent = data.title;
+            
+            // Re-render lucide icons untuk ikon baru (map-pin)
+            lucide.createIcons();
         }
 
-        function toggleRegistrationFields() {
-            const status = document.querySelector('input[name="registrationStatus"]:checked');
-            const newFields = document.getElementById('newRegistrationFields');
-            const existingFields = document.getElementById('existingRegistrationFields');
-            const submitButton = document.getElementById('submitButton');
-            
-            if (status) {
-                submitButton.disabled = false;
-                
-                if (status.value === 'belum_daftar') {
-                    newFields.classList.remove('hidden');
-                    existingFields.classList.add('hidden');
-                    submitButton.textContent = 'Daftar Sekarang';
-                } else if (status.value === 'sudah_daftar') {
-                    newFields.classList.add('hidden');
-                    existingFields.classList.remove('hidden');
-                    submitButton.textContent = 'Generate QR Code';
-                }
-            } else {
-                submitButton.disabled = true;
-                newFields.classList.add('hidden');
-                existingFields.classList.add('hidden');
-            }
-        }
+        /**
+         * Kembali ke tampilan menu utama.
+         */
+        function showMainMenu() {
+            // Sembunyikan detail view, tampilkan menu utama
+            detailView.classList.add('hidden');
+            mainMenu.classList.remove('hidden');
 
-        document.getElementById('regForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+            // Kembalikan judul utama halaman ke Judul Global asli
+            document.querySelector('header h1').textContent = "Laporan Kegiatan HAQI";
             
-            const status = document.querySelector('input[name="registrationStatus"]:checked');
-            
-            if (!status) {
-                return;
-            }
-            
-            let name = '';
-            let phone = '';
-            let kecamatan = '';
-            let kelurahan = '';
-            let participantId = '';
-            
-            if (status.value === 'belum_daftar') {
-                name = document.getElementById('participantName').value.trim();
-                phone = document.getElementById('phoneNumber').value.trim();
-                kecamatan = document.getElementById('kecamatan').value;
-                kelurahan = document.getElementById('kelurahan').value;
-                
-                if (!name || !phone || !kecamatan || !kelurahan) {
-                    showErrorMessage('Mohon lengkapi semua field yang diperlukan');
-                    return;
+            // Tutup semua accordion saat kembali ke menu utama
+            const openContents = document.querySelectorAll('[id^="content-"]:not(.hidden)');
+            openContents.forEach(content => {
+                content.classList.add('hidden');
+                // Putar kembali ikon panah
+                const iconId = 'icon-' + content.id.split('-')[1];
+                const iconElement = document.getElementById(iconId);
+                if (iconElement) {
+                    iconElement.style.transform = 'rotate(0deg)';
                 }
-                
-                // Generate participant ID for new registration
-                participantId = 'REG' + Date.now().toString().slice(-6);
-            } else {
-                // Logic untuk sudah daftar
-                const selectedIndex = document.getElementById('existingParticipant').value;
-                
-                if (!selectedIndex) {
-                    showErrorMessage('Mohon pilih nama peserta yang sudah terdaftar');
-                    return;
-                }
-                
-                const participant = existingParticipants[parseInt(selectedIndex)];
-                name = participant.name;
-                phone = participant.phone;
-                kecamatan = participant.kecamatan;
-                kelurahan = participant.kelurahan;
-                
-                // Generate participant ID for existing registration
-                participantId = 'EXT' + Date.now().toString().slice(-6);
-            }
-            
-            // Get current time
-            const now = new Date();
-            const timeString = now.toLocaleString('id-ID', {
-                day: '2-digit',
-                month: '2-digit', 
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
             });
-            
-            // Update QR result display
-            document.getElementById('registeredName').textContent = name;
-            document.getElementById('participantId').textContent = participantId;
-            document.getElementById('registrationTime').textContent = timeString;
-            
-            // Generate QR code with CSV format
-            const qrData = `${name},${phone},${kecamatan},${kelurahan}`;
-            generateQRCode(qrData);
-            
-            // Hide form and show result
-            document.getElementById('registrationForm').classList.add('hidden');
-            document.getElementById('qrResult').classList.remove('hidden');
-        });
-        
-        function generateQRCode(data) {
-            const canvas = document.getElementById('qrCanvas');
-            
-            // Create QR code using QRious library
-            const qr = new QRious({
-                element: canvas,
-                value: data,
-                size: 150,
-                background: 'white',
-                foreground: 'black',
-                level: 'M'
-            });
-        }
-        
-        function showErrorMessage(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message;
-            errorDiv.classList.remove('hidden');
-            
-            // Hide error message after 5 seconds
-            setTimeout(() => {
-                errorDiv.classList.add('hidden');
-            }, 5000);
         }
 
-        function resetForm() {
-            // Reset all form fields
-            document.getElementById('regForm').reset();
+        /**
+         * Mengaktifkan/menonaktifkan fungsi text collapse (accordion).
+         * @param {string} id - ID bagian yang akan di-toggle ('desc', 'summary', 'testi', 'location').
+         */
+        function toggleCollapse(id) {
+            const content = document.getElementById(`content-${id}`);
+            const icon = document.getElementById(`icon-${id}`);
             
-            // Hide all conditional fields
-            document.getElementById('newRegistrationFields').classList.add('hidden');
-            document.getElementById('existingRegistrationFields').classList.add('hidden');
-            document.getElementById('participantInfo').classList.add('hidden');
-            document.getElementById('errorMessage').classList.add('hidden');
+            // Tutup semua accordion yang terbuka (agar hanya satu yang terbuka)
+            const openContents = document.querySelectorAll('[id^="content-"]:not(.hidden)');
+            openContents.forEach(c => {
+                if (c.id !== content.id) {
+                    c.classList.add('hidden');
+                    const otherIconId = 'icon-' + c.id.split('-')[1];
+                    const otherIconElement = document.getElementById(otherIconId);
+                    if (otherIconElement) {
+                        otherIconElement.style.transform = 'rotate(0deg)';
+                    }
+                }
+            });
+
+            // Toggle tampilan konten yang diklik
+            content.classList.toggle('hidden');
             
-            // Disable submit button
-            document.getElementById('submitButton').disabled = true;
-            document.getElementById('submitButton').textContent = 'Daftar Sekarang';
-            
-            // Show form and hide result
-            document.getElementById('registrationForm').classList.remove('hidden');
-            document.getElementById('qrResult').classList.add('hidden');
+            // Toggle rotasi ikon panah
+            if (content.classList.contains('hidden')) {
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                icon.style.transform = 'rotate(180deg)';
+            }
         }
+
+        // Inisialisasi Lucide Icons
+        window.onload = () => {
+            lucide.createIcons();
+        };
+
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'993fe958f03be780',t:'MTc2MTM3NjQwOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
