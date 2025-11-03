@@ -120,7 +120,7 @@
                 <!-- BARU: 2. Lokasi Kegiatan (Text Collapse/Accordion) -->
                 <div class="border border-green-300 rounded-xl overflow-hidden">
                     <button id="btn-location" onclick="toggleCollapse('location')" 
-                        class="w-full flex justify-between items-center p-4 bg-orange-100 text-orange-800 font-bold hover:bg-orange-200 transition duration-150">
+                        class="w-full flex justify-between items-center p-4 bg-green-100 text-green-800 font-bold hover:bg-green-200 transition duration-150">
                         <span>2. Lokasi Kegiatan</span>
                         <i id="icon-location" data-lucide="chevron-down" class="w-5 h-5"></i>
                     </button>
@@ -400,7 +400,7 @@
             document.getElementById('content-location').innerHTML = `
                 <p class="font-bold mb-3 text-green-700">Nama Lokasi:</p>
                 <p class="text-lg font-semibold mb-4">${data.locationName}</p>
-                <a href="${data.locationMapUrl}" target="_blank" class="flex items-center justify-center w-full p-3 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition duration-200">
+                <a href="${data.locationMapUrl}" target="_blank" class="flex items-center justify-center w-full p-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition duration-200">
                     Lihat di Google Maps
                     <i data-lucide="map-pin" class="w-4 h-4 ml-2"></i>
                 </a>
@@ -486,6 +486,7 @@
     </script>
 </body>
 </html>
+
 
 
 
