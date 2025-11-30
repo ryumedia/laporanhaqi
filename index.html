@@ -24,6 +24,52 @@
             transform: translateY(-2px);
             box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.3), 0 4px 6px -2px rgba(5, 150, 105, 0.05);
         }
+        
+        /* ========================================================= */
+        /* CSS KHUSUS UNTUK CETAK (PRINT TO PDF) */
+        /* ========================================================= */
+        @media print {
+            /* Sembunyikan tombol navigasi dan tombol cetak itu sendiri. Header TIDAK disembunyikan lagi. */
+            .print-hide, 
+            button[onclick="showMainMenu()"] {
+                display: none !important;
+            }
+            
+            /* Paksakan halaman baru SETELAH Poster (activityPosterContainer) */
+            #activityPosterContainer {
+                page-break-after: always;
+            }
+
+            /* Tampilkan SEMUA konten accordion saat dicetak */
+            [id^="content-"] {
+                display: block !important;
+                /* Hapus styling latar belakang dan border untuk cetakan yang lebih bersih */
+                border: none !important; 
+                background-color: transparent !important;
+                padding: 10px 0 !important; /* Beri sedikit padding vertikal */
+                margin-top: -10px !important; /* Atur ulang margin yang tersembunyi */
+            }
+
+            /* Tambahkan kembali margin bawah pada setiap blockquote di testimoni saat dicetak */
+            [id^="content-testi"] blockquote {
+                margin-bottom: 1rem !important;
+                padding-bottom: 1rem !important;
+                border-bottom: 1px solid #d1d5db !important; /* border abu-abu ringan */
+            }
+            
+            /* Hapus border pada blockquote testimoni terakhir */
+            [id^="content-testi"] blockquote:last-child {
+                border-bottom: none !important;
+                padding-bottom: 0 !important;
+            }
+            
+            /* Hapus container utama agar konten bisa memenuhi halaman cetak */
+            #appContainer {
+                box-shadow: none !important;
+                margin-top: 0 !important;
+                padding: 0 !important;
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen flex items-start justify-center p-4 sm:p-8">
@@ -94,8 +140,13 @@
                 <i data-lucide="chevron-left" class="w-5 h-5 mr-1"></i> Kembali ke Daftar Laporan
             </button>
             
-            <!-- Poster Kegiatan -->
-            <div class="mb-8 rounded-xl overflow-hidden shadow-xl border-2 border-green-200">
+            <!-- TOMBOL UNDUH LAPORAN PDF -->
+            <button onclick="window.print()" class="print-hide w-full flex items-center justify-center p-3 mb-6 bg-red-600 text-white rounded-xl font-semibold text-base shadow-md hover:bg-red-700 transition duration-300">
+                <i data-lucide="printer" class="w-5 h-5 mr-2"></i> Unduh Laporan (PDF)
+            </button>
+            
+            <!-- Poster Kegiatan (Container ini yang diberi page-break-after di CSS) -->
+            <div id="activityPosterContainer" class="mb-8 rounded-xl overflow-hidden shadow-xl border-2 border-green-200">
                 <img id="activityPoster" 
                      src="" 
                      alt="Poster Kegiatan" 
@@ -103,7 +154,7 @@
                      onerror="this.onerror=null; this.src='https://placehold.co/600x400/059669/ffffff?text=POSTER+TIDAK+DITEMUKAN';">
             </div>
 
-            <!-- Bagian Tombol dan Collapse -->
+            <!-- Bagian Tombol dan Collapse (Ini akan dimulai di Halaman 2) -->
             <div class="space-y-3" id="detailLinks">
                 
                 <!-- 1. Deskripsi singkat (Text Collapse/Accordion) -->
@@ -117,7 +168,7 @@
                     <div id="content-desc" class="p-4 bg-white text-gray-700 hidden"></div>
                 </div>
                 
-                <!-- BARU: 2. Lokasi Kegiatan (Text Collapse/Accordion) -->
+                <!-- 2. Lokasi Kegiatan (Text Collapse/Accordion) -->
                 <div class="border border-green-300 rounded-xl overflow-hidden">
                     <button id="btn-location" onclick="toggleCollapse('location')" 
                         class="w-full flex justify-between items-center p-4 bg-green-100 text-green-800 font-bold hover:bg-green-200 transition duration-150">
@@ -128,13 +179,13 @@
                     <div id="content-location" class="p-4 bg-white text-gray-700 hidden"></div>
                 </div>
 
-                <!-- 3. Peserta HAQI (Hyperlink) - PENOMORAN BARU (sebelumnya 2) -->
+                <!-- 3. Peserta HAQI (Hyperlink) -->
                 <a id="link-peserta" href="#" class="flex items-center justify-between w-full p-4 bg-green-600 text-white rounded-xl font-semibold text-base shadow-md hover:bg-green-700 transition duration-300">
                     <span>3. Peserta HAQI <span class="text-sm opacity-80">(Presensi Kehadiran)</span></span>
                     <i data-lucide="external-link" class="w-5 h-5"></i>
                 </a>
 
-                <!-- 4. Ringkasan Materi (Text Collapse/Accordion) - PENOMORAN BARU (sebelumnya 3) -->
+                <!-- 4. Ringkasan Materi (Text Collapse/Accordion) -->
                 <div class="border border-green-300 rounded-xl overflow-hidden">
                     <button id="btn-summary" onclick="toggleCollapse('summary')" 
                         class="w-full flex justify-between items-center p-4 bg-green-100 text-green-800 font-bold hover:bg-green-200 transition duration-150">
@@ -145,19 +196,19 @@
                     <div id="content-summary" class="p-4 bg-white text-gray-700 hidden"></div>
                 </div>
 
-                <!-- 5. Materi Kegiatan (Hyperlink) - PENOMORAN BARU (sebelumnya 4) -->
+                <!-- 5. Materi Kegiatan (Hyperlink) -->
                 <a id="link-materi" href="#" class="flex items-center justify-between w-full p-4 bg-green-600 text-white rounded-xl font-semibold text-base shadow-md hover:bg-green-700 transition duration-300">
                     <span>5. Materi Kegiatan <span class="text-sm opacity-80">(File Presentasi)</span></span>
                     <i data-lucide="external-link" class="w-5 h-5"></i>
                 </a>
 
-                <!-- 6. Dokumentasi Kegiatan (Hyperlink) - PENOMORAN BARU (sebelumnya 5) -->
+                <!-- 6. Dokumentasi Kegiatan (Hyperlink) -->
                 <a id="link-doc" href="#" class="flex items-center justify-between w-full p-4 bg-green-600 text-white rounded-xl font-semibold text-base shadow-md hover:bg-green-700 transition duration-300">
                     <span>6. Dokumentasi Kegiatan <span class="text-sm opacity-80">(Galeri Foto & Video)</span></span>
                     <i data-lucide="external-link" class="w-5 h-5"></i>
                 </a>
 
-                <!-- 7. Testimoni (Text Collapse/Accordion) - PENOMORAN BARU (sebelumnya 6) -->
+                <!-- 7. Testimoni (Text Collapse/Accordion) -->
                 <div class="border border-green-300 rounded-xl overflow-hidden">
                     <button id="btn-testi" onclick="toggleCollapse('testi')" 
                         class="w-full flex justify-between items-center p-4 bg-green-100 text-green-800 font-bold hover:bg-green-200 transition duration-150">
@@ -418,7 +469,7 @@
             // Set judul utama halaman di atas (H1) menjadi judul laporan spesifik
             document.querySelector('header h1').textContent = data.title;
             
-            // Re-render lucide icons untuk ikon baru (map-pin)
+            // Re-render lucide icons untuk ikon baru (map-pin dan printer)
             lucide.createIcons();
         }
 
@@ -486,9 +537,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
