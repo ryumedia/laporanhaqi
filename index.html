@@ -1,1802 +1,538 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+    <!-- Metadata penting untuk responsivitas -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HAQI Ujungberung</title>
-
-    <!-- Deskripsi Standar -->
-    <meta name="description" content="Aplikasi manajemen kegiatan HAQI.">
-    
-    <!-- Open Graph Tags (untuk WhatsApp, Facebook, dll.) -->
-    <meta property="og:title" content="HAQI Ujungberung">
-    <meta property="og:description" content="Aplikasi manajemen kegiatan HAQI.">
-    <meta property="og:type" content="website">
-    <meta property="og:image" content="https://blogger.googleusercontent.com/img/a/AVvXsEj73RW53O3BQuQdL07frUji9vbVo8MWkPBuNpWCV_GEMFglevINHdtpEfIMfHCkwlx7un1m7rCvEH1u7VzFZFVXgRvgd8JldQEO0c8WS5l9S41DOBYoUQ9J-BX4zmku9_DRipeMkNezZsgUtAIwEsEs6MgiblgrZ3pv1lNAMH-h2nTg3IG4t12Amwv570k">
-    <meta property="og:image:width" content="500">
-    <meta property="og:image:height" content="500">
-
-    <!-- Load Tailwind CSS -->
+    <title>Laporan Kegiatan HAQI</title>
+    <!-- Memuat Tailwind CSS dari CDN dan Lucide Icons -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <!-- Konfigurasi Tailwind untuk menggunakan font Inter dan menyesuaikan warna hijau -->
     <style>
-        /* Terapkan font default */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
-            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-            background-color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
+            background-color: #f0fdf4; /* Background hijau lembut (green-50) */
         }
-        /* Kelas utilitas untuk menyembunyikan halaman */
-        .page {
-            display: none; /* Sembunyi secara default */
-            width: 100%;
-            flex-direction: column;
+        /* Custom style untuk tombol link utama */
+        .btn-link {
+            transition: all 0.2s ease-in-out;
         }
-        /* Tampilkan halaman yang aktif */
-        .page.active {
-            display: flex; 
+        .btn-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.3), 0 4px 6px -2px rgba(5, 150, 105, 0.05);
         }
         
-        /* Loading spinner sederhana */
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border-left-color: #09f;
-            animation: spin 1s ease infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* Custom scrollbar untuk iframe container jika perlu */
-        iframe {
-            border: none;
+        /* ========================================================= */
+        /* CSS KHUSUS UNTUK CETAK (PRINT TO PDF) */
+        /* ========================================================= */
+        @media print {
+            /* Sembunyikan tombol navigasi dan tombol cetak itu sendiri. Header TIDAK disembunyikan lagi. */
+            .print-hide, 
+            button[onclick="showMainMenu()"] {
+                display: none !important;
+            }
+            
+            /* Paksakan halaman baru SETELAH Poster (activityPosterContainer) */
+            #activityPosterContainer {
+                page-break-after: always;
+            }
+
+            /* Tampilkan SEMUA konten accordion saat dicetak */
+            [id^="content-"] {
+                display: block !important;
+                /* Hapus styling latar belakang dan border untuk cetakan yang lebih bersih */
+                border: none !important; 
+                background-color: transparent !important;
+                padding: 10px 0 !important; /* Beri sedikit padding vertikal */
+                margin-top: -10px !important; /* Atur ulang margin yang tersembunyi */
+            }
+
+            /* Tambahkan kembali margin bawah pada setiap blockquote di testimoni saat dicetak */
+            [id^="content-testi"] blockquote {
+                margin-bottom: 1rem !important;
+                padding-bottom: 1rem !important;
+                border-bottom: 1px solid #d1d5db !important; /* border abu-abu ringan */
+            }
+            
+            /* Hapus border pada blockquote testimoni terakhir */
+            [id^="content-testi"] blockquote:last-child {
+                border-bottom: none !important;
+                padding-bottom: 0 !important;
+            }
+            
+            /* Hapus container utama agar konten bisa memenuhi halaman cetak */
+            #appContainer {
+                box-shadow: none !important;
+                margin-top: 0 !important;
+                padding: 0 !important;
+            }
         }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="min-h-screen flex items-start justify-center p-4 sm:p-8">
 
-    <!-- 1. Halaman Loading -->
-    <div id="loading-page" class="page active items-center justify-center bg-gray-100">
-        <div class="spinner"></div>
-        <p class="ml-4 text-lg text-gray-700">Memuat...</p>
-    </div>
-
-    <!-- 2. Halaman Login -->
-    <div id="login-page" class="page items-center justify-center bg-gray-100 p-6">
-        <div class="w-full max-w-xs text-center">
-
-	<img src="https://blogger.googleusercontent.com/img/a/AVvXsEj73RW53O3BQuQdL07frUji9vbVo8MWkPBuNpWCV_GEMFglevINHdtpEfIMfHCkwlx7un1m7rCvEH1u7VzFZFVXgRvgd8JldQEO0c8WS5l9S41DOBYoUQ9J-BX4zmku9_DRipeMkNezZsgUtAIwEsEs6MgiblgrZ3pv1lNAMH-h2nTg3IG4t12Amwv570k" alt="Logo KOTAQU" class="w-40 h-40 mx-auto mb-8 rounded-full" onerror="this.src=''; this.alt='Logo gagal dimuat'; this.style.display='none';">
-
-            <h1 class="text-3xl font-bold text-green-600 mb-4">HAQI Ujungberung</h1>
-            <p class="text-gray-600 mb-8 font-semibold">Masuk dengan Nomor WA</p>
-            <form id="login-form" class="w-full">
-                <div class="mb-4">
-                    <label for="login-phone" class="sr-only">Nomor WA</label>
-                    <input type="tel" id="login-phone" placeholder="Contoh: 08123456789"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" required />
-                </div>
-                <p id="login-error" class="text-red-500 text-sm mb-4 hidden"></p>
-                <button id="login-button" type="submit"
-                    class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:bg-green-700 transition duration-300 disabled:bg-gray-400">
-                    Lanjutkan
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- 3. Halaman Registrasi -->
-    <div id="register-page" class="page items-center justify-center bg-gray-100 p-6">
-        <div class="w-full max-w-sm text-center">
-            <h1 class="text-3xl font-bold text-green-600 mb-4">Daftar Akun</h1>
-            <p class="text-gray-600 mb-8">Isi data diri Anda</p>
-            <form id="register-form" class="w-full text-left space-y-4">
-                <div>
-                    <label for="register-name" class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
-                    <input type="text" name="name" id="register-name" required
-                        class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-                </div>
-                <div>
-                    <label for="register-phone" class="block text-sm font-medium text-gray-700">Nomor WA (untuk Login)</label>
-                    <input type="tel" name="phoneNumber" id="register-phone" required
-                        class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-                </div>
-                <div>
-                    <label for="register-kecamatan" class="block text-sm font-medium text-gray-700">Kecamatan</label>
-                    <select name="kecamatan" id="register-kecamatan" required
-                        class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                        <option value="">Pilih Kecamatan</option>
-                        <option value="Ujungberung">Ujungberung</option>
-                        <option value="Lainnya">Lainnya</option>
-                    </select>
-                </div>
-                <div id="other-kecamatan-wrapper" class="hidden">
-                    <label for="register-other-kecamatan" class="block text-sm font-medium text-gray-700">Kecamatan (Lainnya)</label>
-                    <input type="text" name="otherKecamatan" id="register-other-kecamatan"
-                        class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-                </div>
-                <div>
-                    <label for="register-kelurahan" class="block text-sm font-medium text-gray-700">Kelurahan</label>
-                    <select name="kelurahan" id="register-kelurahan" required
-                        class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                        <option value="">Pilih Kelurahan</option>
-                        <option value="Pasirendah">Pasirendah</option>
-                        <option value="Cigending">Cigending</option>
-                        <option value="Pasirwangi">Pasirwangi</option>
-                        <option value="Pasirjati">Pasirjati</option>
-                        <option value="Pasanggrahan">Pasanggrahan</option>
-                        <option value="Lainnya">Lainnya</option>
-                    </select>
-                </div>
-                <div id="other-kelurahan-wrapper" class="hidden">
-                    <label for="register-other-kelurahan" class="block text-sm font-medium text-gray-700">Kelurahan (Lainnya)</label>
-                    <input type="text" name="otherKelurahan" id="register-other-kelurahan"
-                        class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-                </div>
-                <p id="register-error" class="text-red-500 text-sm text-center hidden"></p>
-                <button id="register-button" type="submit"
-                    class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:bg-green-700 transition duration-300 disabled:bg-gray-400">
-                    Daftar
-                </button>
-            </form>
-            <button id="back-to-login-button" type="button" 
-                    class="w-full text-center text-sm text-gray-600 hover:text-green-600 hover:underline mt-4">
-                Sudah punya akun? Kembali ke Login
-            </button>
-        </div>
-    </div>
-    
-    <!-- 4. Halaman Aplikasi Utama (Member) -->
-    <div id="main-app-page" class="page bg-gray-50 mx-auto max-w-lg shadow-lg">
-        <!-- Header Aplikasi Member -->
-        <header class="sticky top-0 z-30 bg-white p-4 shadow-md w-full flex-shrink-0">
-            <div class="flex justify-between items-center">
-                <h1 class="text-xl font-bold text-green-600">HAQI Ujungberung</h1>
-
-                <!-- Wrapper untuk tombol di header kanan -->
-                <div class="flex items-center space-x-3">
-                    <!-- Tombol Admin (Hidden by default) -->
-                    <button id="admin-nav-button" title="Panel Admin" class="hidden p-1 rounded-full text-gray-600 hover:bg-gray-200 focus:outline-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                    </button>
-
-                    <!-- Tombol Profil (Yang sudah ada) -->
-                    <div id="profile-button" class="flex items-center space-x-2 cursor-pointer">
-                        <span id="header-username" class="text-gray-700 font-medium">User</span>
-                        <div id="header-avatar" class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white font-bold">
-                            U
-                        </div>
-                    </div>
-                </div>
+    <!-- Kontainer Utama: Dibatasi lebarnya dan diposisikan di tengah -->
+    <div id="appContainer" class="w-full max-w-xl bg-white rounded-3xl shadow-xl p-6 sm:p-10 mt-8">
+        
+        <!-- Header Global (Logo dan Judul) -->
+        <header class="text-center mb-10">
+            <!-- Logo Kegiatan HAQI -->
+            <div class="mb-4">
+                <img id="mainLogo" src="https://blogger.googleusercontent.com/img/a/AVvXsEj73RW53O3BQuQdL07frUji9vbVo8MWkPBuNpWCV_GEMFglevINHdtpEfIMfHCkwlx7un1m7rCvEH1u7VzFZFVXgRvgd8JldQEO0c8WS5l9S41DOBYoUQ9J-BX4zmku9_DRipeMkNezZsgUtAIwEsEs6MgiblgrZ3pv1lNAMH-h2nTg3IG4t12Amwv570k" 
+                     alt="Logo Kegiatan HAQI" 
+                     class="w-24 h-24 rounded-full mx-auto object-cover shadow-lg border-4 border-green-400"
+                     onerror="this.onerror=null; this.src='https://placehold.co/96x96/059669/ffffff?text=HAQI+Logo+Error';">
             </div>
+            <!-- Catatan: H1 ini akan diperbarui oleh JS saat masuk ke detail view -->
+            <h1 class="text-2xl sm:text-2xl font-extrabold text-gray-900 mb-2">
+                Laporan Kegiatan HAQI
+            </h1>
+            <p class="text-lg sm:text-lg font-medium text-green-600">
+                Halaqoh Qur'ani Ujungberung
+            </p>
         </header>
 
-        <nav id="main-nav-tabs" class="sticky top-[64px] z-20 bg-white shadow-sm w-full flex-shrink-0">
-            <div class="flex justify-around border-b border-gray-200">
-                <!-- Tab 1: Kegiatan -->
-                <button id="nav-tab-kegiatan" class="nav-tab w-full py-3 px-2 text-center font-semibold text-green-600 border-b-2 border-green-600 text-sm sm:text-base" data-tab="kegiatan">
-                    Kegiatan
+
+        <!-- ==================================== -->
+        <!-- 1. TAMPILAN MENU UTAMA (HOME) -->
+        <!-- ==================================== -->
+        <div id="mainMenu">
+            <h2 class="text-md font-semibold text-gray-700 mb-6 text-center">Pilih Laporan Kegiatan:</h2>
+            <main class="space-y-4">
+                
+                <!-- Tombol 1: HAQI #1 -->
+                <button onclick="showActivityDetail('haqi1')"
+                    class="btn-link flex items-center justify-center w-full text-center bg-green-600 text-white py-4 rounded-xl font-semibold text-base sm:text-md shadow-lg hover:bg-green-700 transition duration-300">
+                    HAQI #1: Al Qur'an Alat Hidup Kita
                 </button>
-                <!-- Tab 2: Tahsin -->
-                <button id="nav-tab-tahsin" class="nav-tab w-full py-3 px-2 text-center font-medium text-gray-500 border-b-2 border-transparent hover:text-green-600 hover:border-gray-300 text-sm sm:text-base" data-tab="tahsin">
-                    Tahsin
+
+                <!-- Tombol 2: HAQI #2 -->
+                <button onclick="showActivityDetail('haqi2')"
+                    class="btn-link flex items-center justify-center w-full text-center bg-green-600 text-white py-4 rounded-xl font-semibold text-base sm:text-md shadow-lg hover:bg-green-700 transition duration-300">
+                    HAQI #2: Menghafal Dengan Sepenuh Hati
                 </button>
-                <!-- Tab 3: Setoran -->
-                <button id="nav-tab-setoran" class="nav-tab w-full py-3 px-2 text-center font-medium text-gray-500 border-b-2 border-transparent hover:text-green-600 hover:border-gray-300 text-sm sm:text-base" data-tab="setoran">
-                    Hafalan
+
+                <!-- Tombol 3: HAQI #3 -->
+                <button onclick="showActivityDetail('haqi3')"
+                    class="btn-link flex items-center justify-center w-full text-center bg-green-600 text-white py-4 rounded-xl font-semibold text-base sm:text-md shadow-lg hover:bg-green-700 transition duration-300">
+                    HAQI #3: Biar Al Qur'an Yang Ngejaga Kamu
                 </button>
-                <!-- Tab 4: Laporan (BARU) -->
-                <button id="nav-tab-laporan" class="nav-tab w-full py-3 px-2 text-center font-medium text-gray-500 border-b-2 border-transparent hover:text-green-600 hover:border-gray-300 text-sm sm:text-base" data-tab="laporan">
-                    Laporan
-                </button>
-            </div>
-        </nav>
-
-        <!-- Konten Aplikasi Member (Daftar, Detail, Profil) -->
-        <main id="main-content" class="flex-1 overflow-y-auto p-4">
-            <!-- Konten dinamis akan di-render di sini -->
-        </main>
-    </div>
-
-    <!-- 5. Halaman Panel Admin -->
-    <div id="admin-panel-page" class="page bg-gray-50 mx-auto max-w-lg shadow-lg">
-        <!-- Header Aplikasi Admin -->
-        <header class="bg-green-700 text-white p-4 shadow-md w-full flex-shrink-0">
-        <div class="flex justify-between items-center">
-
-        <!-- Grup Kiri: Tombol Kembali + Judul -->
-        <div class="flex items-center space-x-2">
-            <button id="admin-back-to-member-button" title="Kembali ke Halaman Member" class="focus:outline-none p-1 rounded-full hover:bg-red-700">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-            </button>
-            <h1 class="text-xl font-bold">Panel Admin</h1>
-        </div>
-
-        <!-- Grup Kanan: Profil & Logout (Tetap sama) -->
-        <div class="flex items-center space-x-4">
-            <span id="admin-header-username" class="font-medium">Admin</span>
-                    <button id="admin-logout-button" title="Logout"
-                        class="focus:outline-none p-1 rounded-full hover:bg-red-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </header>
-
-        <!-- Konten Aplikasi Admin (Daftar Event, Tambah Event) -->
-        <main id="admin-content" class="flex-1 overflow-y-auto p-4">
-            <!-- Konten dinamis admin akan di-render di sini -->
-        </main>
-    </div>
-
-        <!-- 6. Modal Tambah Setoran (Hidden by default) -->
-        <div id="setoran-modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
-        <div id="setoran-modal" class="fixed inset-x-0 bottom-0 sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-50 w-full max-w-lg p-4 hidden">
-            <div class="bg-white rounded-lg shadow-xl overflow-hidden">
-                <form id="setoran-form" class="p-6 space-y-4">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-xl font-bold text-gray-800">Tambah Hafalan Baru</h2>
-                        <button type="button" id="close-setoran-modal" class="text-gray-400 text-2xl font-bold hover:text-gray-600">&times;</button>
-                    </div>
-                    <div>
-                        <label for="surah-name" class="block text-sm font-medium text-gray-700">Nama Surah</label>
-                        <input type="text" name="surah_name" id="surah-name" required 
-                            class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-                    </div>
-                    <div>
-                        <label for="total-ayat" class="block text-sm font-medium text-gray-700">Jumlah Ayat</label>
-                        <input type="number" name="total_ayat" id="total-ayat" required 
-                            class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-                    </div>
-                    <p id="setoran-status" class="text-sm text-center"></p>
-                    <button id="setoran-submit-button" type="submit" 
-                            class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:bg-green-700 transition duration-300 disabled:bg-gray-400">
-                        Simpan
-                    </button>
-                </form>
-            </div>
-        </div>
-
-    <!-- SCRIPT UTAMA APLIKASI -->
-    <script type="module">
-        import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm';
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-
-        // --- Konfigurasi URL Laporan Eksternal ---
-        // GANTI URL DI BAWAH INI SESUAI KEINGINAN ANDA
-        const EXTERNAL_REPORT_URL = 'https://ryumedia.github.io/laporanhaqi/'; 
-
-        // --- Konfigurasi Supabase ---
-        const SUPABASE_URL = 'https://qupxxrvpeuvfmmgrmxsa.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1cHh4cnZwZXV2Zm1tZ3JteHNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIxNDE1OTUsImV4cCI6MjA3NzcxNzU5NX0.Qt2zjBin5hh2_3BNRZ0x3iPBMp01M1ZgtTaFdt08yFw';
-        
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        let userProfile = null;
-
-        // Selektor DOM
-        const allPages = document.querySelectorAll('.page');
-        const loginForm = document.getElementById('login-form');
-        const loginPhoneInput = document.getElementById('login-phone');
-        const loginError = document.getElementById('login-error');
-        const loginButton = document.getElementById('login-button');
-
-        const registerForm = document.getElementById('register-form');
-        const registerNameInput = document.getElementById('register-name');
-        const registerPhoneInput = document.getElementById('register-phone');
-        const registerKecamatanSelect = document.getElementById('register-kecamatan');
-        const otherKecamatanWrapper = document.getElementById('other-kecamatan-wrapper');
-        const registerOtherKecamatanInput = document.getElementById('register-other-kecamatan');
-        const registerKelurahanSelect = document.getElementById('register-kelurahan');
-        const otherKelurahanWrapper = document.getElementById('other-kelurahan-wrapper');
-        const registerOtherKelurahanInput = document.getElementById('register-other-kelurahan');
-        const registerError = document.getElementById('register-error');
-        const registerButton = document.getElementById('register-button');
-
-        const mainHeaderUsername = document.getElementById('header-username');
-        const mainHeaderAvatar = document.getElementById('header-avatar');
-        const mainContent = document.getElementById('main-content');
-        const profileButton = document.getElementById('profile-button');
-
-        const adminHeaderUsername = document.getElementById('admin-header-username');
-        const adminLogoutButton = document.getElementById('admin-logout-button');
-        const adminContent = document.getElementById('admin-content');
-        let html5QrCode = null;
-
-        const setoranModal = document.getElementById('setoran-modal');
-        const setoranModalBackdrop = document.getElementById('setoran-modal-backdrop');
-        const setoranForm = document.getElementById('setoran-form');
-        const setoranStatus = document.getElementById('setoran-status');
-        const setoranSubmitButton = document.getElementById('setoran-submit-button');
-
-        // Fungsi Utilitas
-        function showPage(pageId) {
-            allPages.forEach(page => {
-                if (page.id === pageId) {
-                    page.classList.add('active');
-                } else {
-                    page.classList.remove('active');
-                }
-            });
-        }
-        function showError(errorElement, message) {
-            errorElement.textContent = message;
-            errorElement.classList.remove('hidden');
-        }
-        function clearError(errorElement) {
-            errorElement.textContent = '';
-            errorElement.classList.add('hidden');
-        }
-        function setButtonLoading(button, isLoading, defaultText = 'Submit') {
-            if (isLoading) {
-                button.disabled = true;
-                button.innerHTML = '<div class="spinner mx-auto" style="width: 20px; height: 20px; border-left-color: white;"></div>';
-            } else {
-                button.disabled = false;
-                button.innerHTML = defaultText;
-            }
-        }
-        function formatDate(dateString) {
-            if (!dateString) return '';
-            const parts = dateString.split('-');
-            if (parts.length !== 3) return dateString;
-            return `${parts[2]}-${parts[1]}-${parts[0]}`; 
-        }
-        function setActiveTab(activeTabName) {
-            const allTabs = document.querySelectorAll('.nav-tab');
-            allTabs.forEach(tab => {
-                const tabName = tab.dataset.tab;
-                if (tabName === activeTabName) {
-                    tab.classList.remove('text-gray-500', 'border-transparent', 'hover:border-gray-300', 'font-medium');
-                    tab.classList.add('text-green-600', 'border-green-600', 'font-semibold');
-                } else {
-                    tab.classList.remove('text-green-600', 'border-green-600', 'font-semibold');
-                    tab.classList.add('text-gray-500', 'border-transparent', 'hover:border-gray-300', 'font-medium');
-                }
-            });
-        }
-
-        // Modal Setoran
-        function showSetoranModal() {
-            setoranForm.reset();
-            clearError(setoranStatus);
-            setoranModal.classList.remove('hidden');
-            setoranModalBackdrop.classList.remove('hidden');
-        }
-        function hideSetoranModal() {
-            setoranModal.classList.add('hidden');
-            setoranModalBackdrop.classList.add('hidden');
-        }
-
-        // --- Fungsi Autentikasi ---
-        async function handleLogin(e) {
-            e.preventDefault();
-            const phone = loginPhoneInput.value;
-            if (phone.length < 9) {
-                showError(loginError, "Nomor WA tidak valid. Minimal 9 angka.");
-                return;
-            }
-            setButtonLoading(loginButton, true, 'Lanjutkan');
-            clearError(loginError);
-            try {
-                const { data, error } = await supabase.from('profiles').select('*').eq('phone_number', phone).limit(1);
-                if (error) throw error;
-                if (data && data.length > 0) {
-                    handleLoginSuccess(data[0]);
-                } else {
-                    registerPhoneInput.value = phone;
-                    showPage('register-page');
-                }
-            } catch (err) {
-                console.error("Error login:", err);
-                showError(loginError, "Gagal memeriksa nomor WA. Coba lagi.");
-            } finally {
-                setButtonLoading(loginButton, false, 'Lanjutkan');
-            }
-        }
-
-        async function handleRegister(e) {
-            e.preventDefault();
-            setButtonLoading(registerButton, true, 'Daftar');
-            clearError(registerError);
-            const name = registerNameInput.value;
-            const phoneNumber = registerPhoneInput.value;
-            const kecamatan = registerKecamatanSelect.value;
-            const kelurahan = registerKelurahanSelect.value;
-            const otherKecamatan = registerOtherKecamatanInput.value;
-            const otherKelurahan = registerOtherKelurahanInput.value;
-            const finalKecamatan = kecamatan === 'Lainnya' ? otherKecamatan : kecamatan;
-            const finalKelurahan = kelurahan === 'Lainnya' ? otherKelurahan : kelurahan;
-            if (!name || !phoneNumber || !finalKecamatan || !finalKelurahan) {
-                showError(registerError, "Semua field wajib diisi.");
-                setButtonLoading(registerButton, false, 'Daftar');
-                return;
-            }
-            const newUserId = crypto.randomUUID();
-            const profileData = { user_id: newUserId, name: name, phone_number: phoneNumber, kecamatan: finalKecamatan, kelurahan: finalKelurahan, created_at: new Date().toISOString() };
-            try {
-                const { data, error } = await supabase.from('profiles').insert([profileData]).select();
-                if (error) {
-                    if (error.code === '23505') showError(registerError, "Nomor WA sudah terdaftar. Silakan kembali ke Login.");
-                    else throw error;
-                } else if (data && data.length > 0) {
-                    handleLoginSuccess(data[0]);
-                }
-            } catch (err) {
-                console.error("Error register:", err);
-                showError(registerError, "Gagal menyimpan profil. Coba lagi.");
-            } finally {
-                setButtonLoading(registerButton, false, 'Daftar');
-            }
-        }
-
-        function handleLoginSuccess(profile) {
-            userProfile = profile;
-            localStorage.setItem('userProfile', JSON.stringify(profile));
-            const firstName = userProfile.name.split(' ')[0] || 'User';
-            mainHeaderUsername.textContent = `${firstName}`;
-            mainHeaderAvatar.textContent = firstName.charAt(0);
-            const adminNavButton = document.getElementById('admin-nav-button');
-            if (userProfile.role === 'admin') {
-                adminNavButton.classList.remove('hidden');
-                adminHeaderUsername.textContent = firstName;
-            } else {
-                adminNavButton.classList.add('hidden');
-            }
-            showEventList();
-            showPage('main-app-page');
-        }
-        
-        function handleLogout() {
-            userProfile = null;
-            localStorage.removeItem('userProfile');
-            loginPhoneInput.value = '';
-            clearError(loginError);
-            showPage('login-page');
-        }
-
-        registerKecamatanSelect.addEventListener('change', () => { otherKecamatanWrapper.classList.toggle('hidden', registerKecamatanSelect.value !== 'Lainnya'); });
-        registerKelurahanSelect.addEventListener('change', () => { otherKelurahanWrapper.classList.toggle('hidden', registerKelurahanSelect.value !== 'Lainnya'); });
-
-        // --- MEMBER APP ---
-        async function showEventList() {
-            document.getElementById('main-nav-tabs').classList.remove('hidden');
-            setActiveTab('kegiatan');
-            mainContent.innerHTML = '<div class="spinner mx-auto mt-10"></div>';
-            try {
-                const { data: registrations, error: regError } = await supabase.from('registrations').select('event_id, check_in, updated_at, registered_at').eq('user_id', userProfile.user_id);
-                if (regError) throw regError;
-                const registrationStatusMap = new Map();
-                if (registrations) { registrations.forEach(reg => { registrationStatusMap.set(reg.event_id, reg); }); }
-                const { data, error } = await supabase.from('events').select('*').order('date', { ascending: false });
-                if (error) throw error;
-                if (data.length === 0) {
-                    mainContent.innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Daftar Kegiatan</h2><div class="p-4 text-center text-gray-500 bg-gray-50 rounded-lg mt-4">Saat ini belum ada event yang tersedia.</div>`;
-                    return;
-                }
-                const eventCardsHTML = data.map(event => {
-                    const registration = registrationStatusMap.get(event.id);
-                    const hasAttended = registration && registration.check_in === 'Hadir';
-                    const today = new Date(); today.setHours(0, 0, 0, 0);
-                    const dateParts = event.date.split('-');
-                    const eventDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]); eventDate.setHours(0, 0, 0, 0);
-                    const diffDays = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                    const boxClass = "flex-shrink-0 w-20 h-20 rounded-lg flex flex-col items-center justify-center p-2 ml-3 shadow-md border";
-                    let countdownHTML = diffDays > 0 ? `<div class="${boxClass} bg-orange-50 border-orange-200"><span class="text-3xl font-bold text-orange-600">${diffDays}</span><span class="text-xs font-semibold text-orange-500 -mt-1">${diffDays === 1 ? 'hari' : 'hari lagi'}</span></div>` :
-                        (diffDays === 0 ? `<div class="${boxClass} bg-orange-50 border-orange-200"><span class="text-lg text-center font-bold text-orange-600 leading-tight">Berlangsung</span></div>` :
-                        `<div class="${boxClass} bg-gray-50 border-gray-200"><span class="text-lg font-bold text-gray-500">Selesai</span></div>`);
-                    return `<div class="event-card bg-white rounded-lg shadow-md border border-gray-200 cursor-pointer hover:shadow-lg transition overflow-hidden" data-id="${event.id}">
-                        <div class="relative">${event.image_url ? `<img src="${event.image_url}" alt="${event.title}" class="w-full h-36 object-cover pointer-events-none" onerror="this.style.display='none'">` : ''}
-                        ${hasAttended ? `<div class="absolute inset-0 bg-green-600 bg-opacity-70 flex flex-col items-center justify-center pointer-events-none p-2"><span class="text-white text-xl font-bold tracking-wide">Hadir</span><span class="text-white text-xs font-medium mt-1">${new Date(registration.updated_at || registration.registered_at).toLocaleString('id-ID')}</span></div>` : ''}</div>
-                        <div class="p-4 pointer-events-none">
-                            <div class="flex justify-between items-start">
-                                <div class="flex-1 min-w-0 mr-2">
-                                    <h3 class="text-lg font-semibold text-green-700">${event.title}</h3>
-                                    <p class="text-sm text-gray-500 mt-1">${formatDate(event.date)} - ${event.location}</p>
-                                </div>
-                                ${countdownHTML}
-                            </div>
-                            <div class="mt-3 w-full bg-green-600 text-white py-2 rounded-lg text-center font-bold text-sm shadow-sm">
-                                Klik Untuk Mendaftar Kegiatan
-                            </div>
-                        </div>
-                    </div>`;
-                }).join('');
-                mainContent.innerHTML = `<div class="space-y-4">${eventCardsHTML}</div>`;
-            } catch (err) { console.error("Error fetching events:", err); mainContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat event.</p>'; }
-        }
-
-        async function showTahsinPage() {
-            document.getElementById('main-nav-tabs').classList.remove('hidden'); setActiveTab('tahsin'); mainContent.innerHTML = '<div class="spinner mx-auto mt-10"></div>';
-            try {
-                const { data, error } = await supabase.from('course').select('*').order('created_at', { ascending: false });
-                if (error) throw error;
-                let courseCardsHTML = data.length > 0 ? data.map(course => `<div class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden"><div class="p-4"><h3 class="text-lg font-semibold text-green-700">${course.course_title}</h3><p class="text-xs text-gray-500 mb-2">Diposting: ${new Date(course.created_at).toLocaleDateString('id-ID')}</p><p class="text-sm text-gray-700 line-clamp-3 mb-3">${course.description || 'Tidak ada deskripsi.'}</p>${course.course_link ? `<a href="${course.course_link}" target="_blank" rel="noopener noreferrer" class="inline-block w-full text-center bg-green-600 text-white py-2 px-3 rounded-lg text-sm font-semibold hover:bg-green-700 transition">Buka Materi</a>` : `<span class="inline-block w-full text-center bg-gray-300 text-gray-600 py-2 px-3 rounded-lg text-sm font-semibold cursor-not-allowed">Materi Belum Tersedia</span>`}</div></div>`).join('') : `<div class="p-4 text-center text-gray-500 bg-gray-50 rounded-lg">Belum ada materi tahsin yang tersedia.</div>`;
-                mainContent.innerHTML = `<img src="https://blogger.googleusercontent.com/img/a/AVvXsEhIGOz3ysa2kj9UE1oP8J3GjxM0P8Su8Md-db8UL6MPJ_Y_Q65Ql25avK4TAQspsX6Vuw6Gi1z-3gGTwNUFSW3-UtxopiHKOcG_eknqHaMhbgNEUta52Tm_14bf9IjwUV214xTez_csqJGfFm2__0aw3MW6M2a7UNc4t7PiE6arG4hnjAb7sZPOdYbG2Zs" alt="Banner Tahsin" class="w-full h-36 object-cover rounded-lg shadow-md mb-4" onerror="this.style.display='none'"><div class="space-y-4">${courseCardsHTML}</div>`;
-            } catch (err) { console.error("Error fetching courses:", err); mainContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat materi tahsin.</p>'; }
-        }
-
-        async function showSetoranPage() {
-            document.getElementById('main-nav-tabs').classList.remove('hidden'); setActiveTab('setoran'); mainContent.innerHTML = '<div class="spinner mx-auto mt-10"></div>';
-            try {
-                const { data, error } = await supabase.from('report').select('*').eq('user_id', userProfile.user_id).order('created_at', { ascending: false });
-                if (error) throw error;
-                const totalAyat = data.reduce((acc, report) => acc + (report.total_ayat || 0), 0);
-                const uniqueSurahNames = new Set(data.map(report => report.surah_name));
-                const totalSuratUnik = uniqueSurahNames.size;
-                let reportCardsHTML = data.length > 0 ? data.map(report => `<div class="report-card bg-white p-4 rounded-lg shadow-md border border-gray-200 flex justify-between items-center"><div><h3 class="text-lg font-semibold text-green-700">${report.surah_name}</h3><p class="text-sm text-gray-600">${report.total_ayat} ayat</p><p class="text-xs text-gray-500 mt-1">Disetor: ${new Date(report.created_at).toLocaleString('id-ID')}</p></div><button data-action="delete-report" data-id="${report.id}" title="Hapus Setoran" class="delete-report-button flex-shrink-0 bg-red-100 text-red-600 w-10 h-10 rounded-full font-semibold shadow-sm hover:bg-red-200 transition flex items-center justify-center disabled:bg-gray-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div>`).join('') : `<div class="p-4 text-center text-gray-500 bg-gray-50 rounded-lg">Belum ada setoran hafalan yang dilaporkan.</div>`;
-                mainContent.innerHTML = `<div class="flex justify-between items-center mb-4"><h2 class="text-lg font-bold text-gray-800">Laporan Hafalan</h2><button id="add-setoran-button" class="bg-orange-600 text-white py-2 px-4 rounded-lg font-semibold shadow-lg hover:bg-orange-700 transition duration-300">+ Tambah Hafalan</button></div><div class="grid grid-cols-2 gap-4 mb-4"><div class="bg-white p-4 rounded-lg shadow-md border border-gray-200 text-center"><p class="text-sm font-medium text-gray-500">Total Surat Dihafal</p><p class="text-3xl font-bold text-green-600">${totalSuratUnik}</p></div><div class="bg-white p-4 rounded-lg shadow-md border border-gray-200 text-center"><p class="text-sm font-medium text-gray-500">Total Ayat Dihafal</p><p class="text-3xl font-bold text-green-600">${totalAyat}</p></div></div><div class="space-y-4">${reportCardsHTML}</div>`;
-                document.getElementById('add-setoran-button').addEventListener('click', showSetoranModal);
-            } catch (err) { console.error("Error fetching reports:", err); mainContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat laporan setoran.</p>'; }
-        }
-
-        // --- FUNGSI HALAMAN LAPORAN (BARU) ---
-        function showLaporanPage() {
-            document.getElementById('main-nav-tabs').classList.remove('hidden');
-            setActiveTab('laporan');
             
-            // Render Iframe
-            mainContent.innerHTML = `
-                <div class="w-full h-full flex flex-col" style="min-height: 80vh;">
-                    <iframe 
-                        src="${EXTERNAL_REPORT_URL}" 
-                        class="w-full flex-1 border-0 rounded-lg shadow-sm bg-white" 
-                        style="min-height: 100%;" 
-                        allowfullscreen>
-                    </iframe>
+                 <!-- Tombol BARU: HAQI #4 (Tambahan) - DISMEBUNYIKAN SEMENTARA DENGAN CLASS 'hidden' -->
+                <button onclick="showActivityDetail('haqi4')"
+                    class="hidden btn-link flex items-center justify-center w-full text-center bg-green-600 text-white py-4 rounded-xl font-semibold text-base sm:text-md shadow-lg hover:bg-green-700 transition duration-300">
+                    HAQI #4: [TEMA BARU ANDA DI SINI]
+                </button>
+            
+            </main>
+        </div>
+
+        <!-- ==================================== -->
+        <!-- 2. TAMPILAN DETAIL KEGIATAN -->
+        <!-- ==================================== -->
+        <div id="detailView" class="hidden">
+            
+            <!-- Tombol Kembali -->
+            <button onclick="showMainMenu()" class="flex items-center text-green-600 font-semibold mb-6 hover:text-green-800 transition duration-150">
+                <i data-lucide="chevron-left" class="w-5 h-5 mr-1"></i> Kembali ke Daftar Laporan
+            </button>
+            
+            <!-- TOMBOL UNDUH LAPORAN PDF -->
+            <button onclick="window.print()" class="print-hide w-full flex items-center justify-center p-3 mb-6 bg-red-600 text-white rounded-xl font-semibold text-base shadow-md hover:bg-red-700 transition duration-300">
+                <i data-lucide="printer" class="w-5 h-5 mr-2"></i> Unduh Laporan (PDF)
+            </button>
+            
+            <!-- Poster Kegiatan (Container ini yang diberi page-break-after di CSS) -->
+            <div id="activityPosterContainer" class="mb-8 rounded-xl overflow-hidden shadow-xl border-2 border-green-200">
+                <img id="activityPoster" 
+                     src="" 
+                     alt="Poster Kegiatan" 
+                     class="w-full h-auto object-cover"
+                     onerror="this.onerror=null; this.src='https://placehold.co/600x400/059669/ffffff?text=POSTER+TIDAK+DITEMUKAN';">
+            </div>
+
+            <!-- Bagian Tombol dan Collapse (Ini akan dimulai di Halaman 2) -->
+            <div class="space-y-3" id="detailLinks">
+                
+                <!-- 1. Deskripsi singkat (Text Collapse/Accordion) -->
+                <div class="border border-green-300 rounded-xl overflow-hidden">
+                    <button id="btn-desc" onclick="toggleCollapse('desc')" 
+                        class="w-full flex justify-between items-center p-4 bg-green-100 text-green-800 font-bold hover:bg-green-200 transition duration-150">
+                        <span>1. Deskripsi Singkat</span>
+                        <i id="icon-desc" data-lucide="chevron-down" class="w-5 h-5"></i>
+                    </button>
+                    <!-- Konten akan diisi oleh JS -->
+                    <div id="content-desc" class="p-4 bg-white text-gray-700 hidden"></div>
                 </div>
+                
+                <!-- 2. Lokasi Kegiatan (Text Collapse/Accordion) -->
+                <div class="border border-green-300 rounded-xl overflow-hidden">
+                    <button id="btn-location" onclick="toggleCollapse('location')" 
+                        class="w-full flex justify-between items-center p-4 bg-green-100 text-green-800 font-bold hover:bg-green-200 transition duration-150">
+                        <span>2. Lokasi Kegiatan</span>
+                        <i id="icon-location" data-lucide="chevron-down" class="w-5 h-5"></i>
+                    </button>
+                    <!-- Konten akan diisi oleh JS, termasuk Nama Lokasi dan Tombol Map -->
+                    <div id="content-location" class="p-4 bg-white text-gray-700 hidden"></div>
+                </div>
+
+                <!-- 3. Peserta HAQI (Hyperlink) -->
+                <a id="link-peserta" href="#" class="flex items-center justify-between w-full p-4 bg-green-600 text-white rounded-xl font-semibold text-base shadow-md hover:bg-green-700 transition duration-300">
+                    <span>3. Peserta HAQI <span class="text-sm opacity-80">(Presensi Kehadiran)</span></span>
+                    <i data-lucide="external-link" class="w-5 h-5"></i>
+                </a>
+
+                <!-- 4. Ringkasan Materi (Text Collapse/Accordion) -->
+                <div class="border border-green-300 rounded-xl overflow-hidden">
+                    <button id="btn-summary" onclick="toggleCollapse('summary')" 
+                        class="w-full flex justify-between items-center p-4 bg-green-100 text-green-800 font-bold hover:bg-green-200 transition duration-150">
+                        <span>4. Ringkasan Materi</span>
+                        <i id="icon-summary" data-lucide="chevron-down" class="w-5 h-5"></i>
+                    </button>
+                    <!-- Konten akan diisi oleh JS -->
+                    <div id="content-summary" class="p-4 bg-white text-gray-700 hidden"></div>
+                </div>
+
+                <!-- 5. Materi Kegiatan (Hyperlink) -->
+                <a id="link-materi" href="#" class="flex items-center justify-between w-full p-4 bg-green-600 text-white rounded-xl font-semibold text-base shadow-md hover:bg-green-700 transition duration-300">
+                    <span>5. Materi Kegiatan <span class="text-sm opacity-80">(File Presentasi)</span></span>
+                    <i data-lucide="external-link" class="w-5 h-5"></i>
+                </a>
+
+                <!-- 6. Dokumentasi Kegiatan (Hyperlink) -->
+                <a id="link-doc" href="#" class="flex items-center justify-between w-full p-4 bg-green-600 text-white rounded-xl font-semibold text-base shadow-md hover:bg-green-700 transition duration-300">
+                    <span>6. Dokumentasi Kegiatan <span class="text-sm opacity-80">(Galeri Foto & Video)</span></span>
+                    <i data-lucide="external-link" class="w-5 h-5"></i>
+                </a>
+
+                <!-- 7. Testimoni (Text Collapse/Accordion) -->
+                <div class="border border-green-300 rounded-xl overflow-hidden">
+                    <button id="btn-testi" onclick="toggleCollapse('testi')" 
+                        class="w-full flex justify-between items-center p-4 bg-green-100 text-green-800 font-bold hover:bg-green-200 transition duration-150">
+                        <span>7. Testimoni</span>
+                        <i id="icon-testi" data-lucide="chevron-down" class="w-5 h-5"></i>
+                    </button>
+                    <!-- Konten akan diisi oleh JS -->
+                    <div id="content-testi" class="p-4 bg-white text-gray-700 hidden"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // =========================================================
+        // LOKASI EDIT DATA UTAMA (activityData)
+        // SILAKAN EDIT PROPERTI DI BAWAH INI UNTUK TIAP KEGIATAN
+        // =========================================================
+        const activityData = {
+            haqi1: {
+                title: "HAQI #1: Al Qur'an Alat Hidup Kita",
+                posterUrl: "https://blogger.googleusercontent.com/img/a/AVvXsEgmzhoSpJYdFi3tTdaffIKskx-5T47k1TkxgQrGEcolp3Ft5g1IxoyLfB0pNtRkxV32Bn6C29rjY6rpdAUi8vXqeQCoQvQPU0xpjRWM4O7t2kaKFVtOxS3zwsqR3fcgJMgkZ7ndWy_yy_m6br-7HS9nhMNMa_taYFIyTMlvqiKwwn9PT78En_WuZ3LaSzA",
+                
+                // BARU: Data Lokasi
+                locationName: "Masjid Baitul Muttaqin - Komplek Gending Mas - Pasirjati",
+                locationMapUrl: "https://maps.app.goo.gl/Rz4x8usMLF6snnPQ7",
+                
+                // Hyperlink URLs
+                pesertaLink: "https://docs.google.com/spreadsheets/d/196-UDzXDpYrochKduk9se77_3p3QbGmArpNT70_HPSU/edit?usp=sharing", // Ganti dengan link Data Peserta HAQI #1
+                materiLink: "https://drive.google.com/file/d/1BZk_KgU8b0HihfvokFnOpW6qz34EfHIH/view?usp=sharing", // Ganti dengan link Materi Kegiatan HAQI #1
+                dokumentasiLink: "https://drive.google.com/drive/folders/1qJXx-AHznjv1UEN3yUxYdwB36iSoVWtv?usp=sharing", // Ganti dengan link Dokumentasi HAQI #1
+
+                // Konten Text Collapse (Deskripsi Singkat)
+                descriptionContent: `
+                    <p class="font-bold mb-2 text-green-700">Deskripsi HAQI #1</p>
+                    <p>HAQI #1 Ujungberung mengusung Tema 'Al Qur'an Alat Hidup Kita' yang diselenggarakan pada Ahad, 15 Juni 2025. HAQI #1 dilaksanakan di Masjid Baitul Muttaqin Pasirjati Ujungberung dengan Pembicara Ust. Ali Muhammad, M.Pd. Al Hafidz.</p>
+                    <p class="mt-2">Tujuan dari HAQI #1 ini adalah memberikan pemahaman kepada peserta bahwa Al-Qur’an adalah petunjuk hidup yang menyeluruh.</p>
+                    <p class="mt-3">Kegiatan ini dihadiri oleh 43 peserta dari berbagai kelurahan di ujungberung.</p>
+                `,
+
+                // Konten Text Collapse (Ringkasan Materi)
+                summaryContent: `
+                    <p class="font-bold mb-2 text-green-700">Ringkasan Kegiatan HAQI #1</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Konsep Dasar: Membahas kedudukan Al-Qur'an sebagai Way of Life (Manhajul Hayat).</li>
+                        <li>Implementasi: Diskusi tentang cara mengintegrasikan nilai-nilai Qur'ani dalam pengambilan keputusan, pekerjaan, dan hubungan sosial.</li>
+                        <li>Kesimpulan: Menegaskan pentingnya konsistensi membaca, mentadabburi, dan mengamalkan setiap ayat.</li>
+                    </ul>
+                `,
+
+                // Konten Text Collapse (Testimoni) - Dibuat dua contoh
+                testimonialContent: `
+                    <p class="font-bold mb-2 text-green-700">Testimoni HAQI #1</p>
+                    <!-- Testimoni 1 -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600 mb-4 pb-4 border-b border-green-200">
+                        "Alhamdulillah, setelah mengikuti sesi ini, saya teringatkan kembali. Al-Qur'an bukan lagi sekadar bacaan, tapi benar-benar menjadi panduan di setiap langkah."
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- Aisyah (Cigending)</footer>
+                    </blockquote>
+                    <!-- Testimoni 2 -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600">
+                        "Metode penyampaiannya santai tapi berbobot. Saya jadi lebih semangat mengoreksi diri dan menjadikan Al-Qur'an sebagai alarm harian."
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- Ali (Pasanggrahan)</footer>
+                    </blockquote>
+                `,
+            },
+
+            haqi2: {
+                title: "HAQI #2: Menghafal Dengan Sepenuh Hati",
+                posterUrl: "https://blogger.googleusercontent.com/img/a/AVvXsEilXXkU34ZLGVy1662Q_DIAUBDe-Dje_-hPk2XbRvUHwlOQJWp_ZM1Q3DhRF-XEfkXosMLkZhk6vUFIOqaijXUn0k8GzcRDk7gC1s21QLLCYc087ATB1JYKc7ZOYKy8rAMkeerEJrFVULqV8YTgArrB4taZydyF2AkLrzpOs-Qe2EnFEgFq6Y9GteVHQnw", 
+                
+                // BARU: Data Lokasi (Dummy)
+                locationName: "Masjid SMP Rabbani - Ujungberung",
+                locationMapUrl: "https://maps.app.goo.gl/dEUer6dgkbHbyUTA8",
+                
+                // Hyperlink URLs
+                pesertaLink: "https://docs.google.com/spreadsheets/d/1Om3XK3v-99Q6My1SndUY1Dedv06stLMpZgEDK-GPeLk/edit?usp=sharing", // Ganti dengan link Data Peserta HAQI #2
+                materiLink: "https://drive.google.com/file/d/1NutVnixfEjjnGuj5KjCLaFGhZiXW3yvH/view?usp=sharing", // Ganti dengan link Materi Kegiatan HAQI #2
+                dokumentasiLink: "https://drive.google.com/drive/folders/1EXwti531E9greLkm1XROwZt-RG2zo_lv?usp=sharing", // Ganti dengan link Dokumentasi HAQI #2
+
+                // Konten Text Collapse (Deskripsi Singkat)
+                descriptionContent: `
+                    <p class="font-bold mb-2 text-green-700">Deskripsi HAQI #2</p>
+                    <p>Pada Kegiatan HAQI #2 fokus pada teknik dan motivasi menghafal Al-Qur'an secara efektif, bertema "Menghafal Dengan Sepenuh Hati". Kegiatan ini menekankan pentingnya niat, konsistensi, dan suasana hati yang tenang dalam proses Menghafal.</p>
+                    <p class="mt-2">Pemateri Kegiatan HAQI #2 adalah Ustad Nur Ihsan Jundullah, Lc. dan dihadiri oleh 56 Peserta.</p>
+                    <p class="mt-3">Mulai dari HAQI #2 diadakan sesi Tahsin atau belajar Tajwid bersama Ustad Yan Alfa Robbi yang merupakan PJ Qur'an Ujungberung.</p>
+                `,
+
+                // Konten Text Collapse (Ringkasan Materi)
+                summaryContent: `
+                    <p class="font-bold mb-2 text-green-700">Ringkasan Materi HAQI #2</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Muatan Emosi dalam Al Quran: Hafalan mekanis vs hafalan emosional.</li>
+                        <li>Bukan Turun di Ruang Hampa: Asbabun nuzul (peristiwa penyebab turunnya wahyu) adalah konteks emosional wahyu.</li>
+                        <li>Cinta Sebelum Bisa, Guru Sebelum Ilmu: Kisah inspiratif penghafal Al-Qur'an dan keutamaan menjadi Ahlullah.</li>
+                    </ul>
+                `,
+
+                // Konten Text Collapse (Testimoni) - Dibuat dua contoh
+                testimonialContent: `
+                    <p class="font-bold mb-2 text-green-700">Testimoni HAQI #2</p>
+                    <!-- Testimoni 1 -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600 mb-4 pb-4 border-b border-green-200">
+                        "Dari segi materi yang di sampaikan ustadz Abe Alhamdulillah jadi lebih termotivasi menghafal Al qur'an lewat pendalaman pengetahuan arti, histori , dan asbabunnuzulnya"
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- Siti Yuningsih (Panyileukan)</footer>
+                    </blockquote>
+                    <!-- Testimoni 2 -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600">
+                        "Alhamdulillah ada kegiatan Tahsin nya, jadi nambah ilmu. dan juga banyak doorprizenya. Hatur Nuhun"
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- Achmad Ghozali (Ujungberung)</footer>
+                    </blockquote>
+                `,
+            },
+
+            haqi3: {
+                title: "HAQI #3: Biar Al Qur'an Yang Ngejaga Kamu",
+                posterUrl: "https://blogger.googleusercontent.com/img/a/AVvXsEgrZ24nZ2GwUqDpd2DXIlyIAeoCrcWzt7IQBgjfNZnPBSdStdX01F0oIUHlUEI_AVbfRqp3il5XDWIBtCoRcV24Q8f37sJ2PKWP-_4LRYlw5457e5n5IxdxhUkCSAG5BDZdauIHbPHeH3oI8FkUpL1LgU3dU9SdLPW3EJKjyBTDZOEF09QlY7_zrufoTyA",
+                
+                // BARU: Data Lokasi (Dummy)
+                locationName: "Masjid Ali Abdalah (Jl. Cijambe No.15, Pasir Endah, Kec. Ujung Berung, Kota Bandung)",
+                locationMapUrl: "https://maps.app.goo.gl/cR4BFw4YS17vcpbRA",
+                
+                // Hyperlink URLs
+                pesertaLink: "#", // Ganti dengan link Data Peserta HAQI #3
+                materiLink: "#", // Ganti dengan link Materi Kegiatan HAQI #3
+                dokumentasiLink: "#", // Ganti dengan link Dokumentasi HAQI #3
+                
+                // Konten Text Collapse (Deskripsi Singkat)
+                descriptionContent: `
+                    <p class="font-bold mb-2 text-green-700">Deskripsi HAQI #3</p>
+                    <p>Kegiatan ketiga, "Biar Al Qur'an Yang Ngejaga Kamu", membahas peran Al-Qur'an sebagai syafa'at (penolong) dan pelindung di dunia dan akhirat. Fokusnya adalah pada keutamaan *istiqomah* dan keberkahan yang didapat dari interaksi intensif dengan kalamullah.</p>
+                    <p class="mt-2">Insya Allah materi akan disampaikan oleh Ust. Agus Subagio, Al Hafidz.</p>
+                `,
+
+                // Konten Text Collapse (Ringkasan Materi)
+                summaryContent: `
+                    <p class="font-bold mb-2 text-green-700">Ringkasan Mater HAQI #3</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>akan diupdate kemudian.</li>
+                        <li>akan diupdate kemudian.</li>
+                        <li>akan diupdate kemudian.</li>
+                    </ul>
+                `,
+
+                // Konten Text Collapse (Testimoni) - Dibuat dua contoh
+                testimonialContent: `
+                    <p class="font-bold mb-2 text-green-700">Testimoni HAQI #3</p>
+                    <!-- Testimoni 1 -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600 mb-4 pb-4 border-b border-green-200">
+                        "testimoni akan diupdate disini."
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- </footer>
+                    </blockquote>
+                    <!-- Testimoni 2 -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600 mb-4 pb-4 border-b border-green-200">
+                        "testimoni akan diupdate disini."
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- </footer>
+                    </blockquote>
+                    <!-- Testimoni 3 -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600">
+                        "testimoni akan diupdate disini."
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- </footer>
+                    </blockquote>
+                `,
+            },
+
+            // =========================================================
+            // TEMPLATE BARU UNTUK HAQI #4 (SILAKAN EDIT ISINYA)
+            // =========================================================
+            haqi4: {
+                title: "HAQI #4: [TEMA BARU ANDA DI SINI]",
+                // Ganti dengan URL poster HAQI #4
+                posterUrl: "https://placehold.co/600x400/059669/ffffff?text=POSTER+HAQI+4", 
+                
+                // BARU: Data Lokasi (Dummy)
+                locationName: "Lokasi HAQI 4 (Contoh Dummy) - Silakan Ganti",
+                locationMapUrl: "https://maps.app.goo.gl/dummy4",
+                
+                // Ganti dengan link Data Peserta HAQI #4
+                pesertaLink: "#", 
+                // Ganti dengan link Materi Kegiatan HAQI #4
+                materiLink: "#", 
+                // Ganti dengan link Dokumentasi HAQI #4
+                dokumentasiLink: "#", 
+                
+                // Konten Text Collapse (Deskripsi Singkat)
+                descriptionContent: `
+                    <p class="font-bold mb-2 text-green-700">-- Konten HAQI #4: Deskripsi Singkat --</p>
+                    <p>Ini adalah ringkasan kegiatan Halaqoh Qur'ani Ujungberung (HAQI) seri keempat. Silakan ganti teks ini dengan deskripsi singkat tentang tema dan tujuan utama kegiatan tersebut.</p>
+                    <p class="mt-2">Pastikan untuk mencantumkan detail penting seperti tanggal, jumlah peserta, dan fokus materi yang dibahas.</p>
+                `,
+
+                // Konten Text Collapse (Ringkasan Materi)
+                summaryContent: `
+                    <p class="font-bold mb-2 text-green-700">-- Konten HAQI #4: Ringkasan Materi --</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>**Sesi 1:** Tuliskan poin-poin penting materi di sini.</li>
+                        <li>**Sesi 2:** Tuliskan ringkasan pembahasan kedua.</li>
+                        <li>**Sesi 3:** Tuliskan kesimpulan atau tindak lanjut.</li>
+                    </ul>
+                `,
+
+                // Konten Text Collapse (Testimoni) - Gunakan format yang sama, pastikan hanya testimoni terakhir yang tanpa border-b
+                testimonialContent: `
+                    <p class="font-bold mb-2 text-green-700">-- Konten HAQI #4: Testimoni --</p>
+                    <!-- Testimoni 1 (Wajib ada border jika ada Testimoni 2) -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600 mb-4 pb-4 border-b border-green-200">
+                        "Testimoni pertama tentang HAQI #4. Ganti teks ini."
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- Nama Peserta 1</footer>
+                    </blockquote>
+                    <!-- Testimoni 2 (Tidak perlu border jika ini testimoni terakhir) -->
+                    <blockquote class="border-l-4 border-green-500 pl-4 italic text-gray-600">
+                        "Testimoni kedua tentang HAQI #4. Ganti teks ini."
+                        <footer class="mt-2 text-sm not-italic font-semibold text-green-700">- Nama Peserta 2</footer>
+                    </blockquote>
+                `,
+            }
+        };
+
+        const mainMenu = document.getElementById('mainMenu');
+        const detailView = document.getElementById('detailView');
+        const activityPoster = document.getElementById('activityPoster');
+
+        /**
+         * Menampilkan tampilan detail kegiatan berdasarkan ID dan mengisi konten dinamis.
+         * @param {string} id - ID kegiatan ('haqi1', 'haqi2', 'haqi3', 'haqi4').
+         */
+        function showActivityDetail(id) {
+            const data = activityData[id];
+            
+            // Mengisi Poster dan Hyperlink
+            activityPoster.src = data.posterUrl;
+            document.getElementById('link-peserta').href = data.pesertaLink;
+            document.getElementById('link-materi').href = data.materiLink;
+            document.getElementById('link-doc').href = data.dokumentasiLink;
+
+            // Mengisi Konten Collapse: 1. Deskripsi Singkat
+            document.getElementById('content-desc').innerHTML = data.descriptionContent;
+            
+            // Mengisi Konten Collapse BARU: 2. Lokasi Kegiatan (Nama Lokasi & Link Map)
+            document.getElementById('content-location').innerHTML = `
+                <p class="font-bold mb-3 text-green-700">Nama Lokasi:</p>
+                <p class="text-lg font-semibold mb-4">${data.locationName}</p>
+                <a href="${data.locationMapUrl}" target="_blank" class="flex items-center justify-center w-full p-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition duration-200">
+                    Lihat di Google Maps
+                    <i data-lucide="map-pin" class="w-4 h-4 ml-2"></i>
+                </a>
             `;
+            
+            // Mengisi Konten Collapse: 4. Ringkasan Materi
+            document.getElementById('content-summary').innerHTML = data.summaryContent;
+            // Mengisi Konten Collapse: 7. Testimoni
+            document.getElementById('content-testi').innerHTML = data.testimonialContent;
+            
+            // Sembunyikan menu utama, tampilkan detail view
+            mainMenu.classList.add('hidden');
+            detailView.classList.remove('hidden');
+
+            // Set judul utama halaman di atas (H1) menjadi judul laporan spesifik
+            document.querySelector('header h1').textContent = data.title;
+            
+            // Re-render lucide icons untuk ikon baru (map-pin dan printer)
+            lucide.createIcons();
         }
 
-        async function showEventDetail_v2(eventId) {
-            document.getElementById('main-nav-tabs').classList.add('hidden');
-            mainContent.innerHTML = '<div class="spinner mx-auto mt-10"></div>';
-            try {
-                // 1. Ambil detail event
-                const { data: event, error: eventError } = await supabase.from('events').select('*').eq('id', eventId).single();
-                if (eventError) throw eventError;
+        /**
+         * Kembali ke tampilan menu utama.
+         */
+        function showMainMenu() {
+            // Sembunyikan detail view, tampilkan menu utama
+            detailView.classList.add('hidden');
+            mainMenu.classList.remove('hidden');
 
-                // 2. Cek registrasi
-                const { data: regData, error: regError } = await supabase.from('registrations').select('id').eq('event_id', eventId).eq('user_id', userProfile.user_id).limit(1);
-                if (regError) throw regError;
-                const isRegistered = regData.length > 0;
-
-                // 3. Ambil Rundown (FITUR BARU)
-                const { data: rundowns, error: rundownError } = await supabase
-                    .from('event_rundowns')
-                    .select('*')
-                    .eq('event_id', eventId)
-                    .order('start_time', { ascending: true });
-                
-                let rundownHTML = '';
-                if (rundowns && rundowns.length > 0) {
-                    const listItems = rundowns.map(item => `
-                        <div class="relative pl-6 pb-6 border-l-2 border-green-200 last:border-0 last:pb-0">
-                            <div class="absolute -left-[9px] top-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
-                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-baseline">
-                                <span class="font-bold text-green-700 text-sm mb-1 sm:mb-0">
-                                    ${item.start_time} ${item.end_time ? `- ${item.end_time}` : ''}
-                                </span>
-                                <span class="font-semibold text-gray-800 text-base sm:ml-4 flex-1">${item.activity}</span>
-                            </div>
-                            ${item.description ? `<p class="text-sm text-gray-600 mt-1">${item.description}</p>` : ''}
-                        </div>
-                    `).join('');
-
-                    rundownHTML = `
-                        <details class="mt-6 group bg-white border border-gray-200 rounded-lg shadow-sm open:ring-1 open:ring-green-200 transition-all duration-300">
-                            <summary class="list-none flex justify-between items-center p-4 cursor-pointer bg-gray-50 rounded-lg group-open:rounded-b-none group-open:bg-green-50 hover:bg-green-50 transition">
-                                <h3 class="text-lg font-bold text-gray-800 flex items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                    </svg>
-                                    Susunan Acara
-                                </h3>
-                                <span class="transform group-open:rotate-180 transition-transform duration-300 text-green-600">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                    </svg>
-                                </span>
-                            </summary>
-                            <div class="p-4 border-t border-gray-100 bg-white">
-                                <div class="ml-2">
-                                    ${listItems}
-                                </div>
-                            </div>
-                        </details>
-                    `;
+            // Kembalikan judul utama halaman ke Judul Global asli
+            document.querySelector('header h1').textContent = "Laporan Kegiatan HAQI";
+            
+            // Tutup semua accordion saat kembali ke menu utama
+            const openContents = document.querySelectorAll('[id^="content-"]:not(.hidden)');
+            openContents.forEach(content => {
+                content.classList.add('hidden');
+                // Putar kembali ikon panah
+                const iconId = 'icon-' + content.id.split('-')[1];
+                const iconElement = document.getElementById(iconId);
+                if (iconElement) {
+                    iconElement.style.transform = 'rotate(0deg)';
                 }
-
-                // Cek tanggal
-                const today = new Date(); today.setHours(0, 0, 0, 0);
-                const dateParts = event.date.split('-');
-                const eventDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]); eventDate.setHours(0, 0, 0, 0);
-                const isEventOver = eventDate < today;
-                
-                mainContent.innerHTML = `
-                    <button id="detail-back-button" class="text-green-600 mb-4 font-medium flex items-center hover:text-green-800 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                        Kembali ke Daftar Kegiatan
-                    </button>
-                    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-                        ${event.image_url ? `<img src="${event.image_url}" alt="${event.title}" class="w-full h-48 object-cover" onerror="this.style.display='none'">` : ''}
-                        <div class="flex p-4 space-x-2">
-                            <button id="register-event-button" ${isRegistered || isEventOver ? 'disabled' : ''} class="${event.materials_link ? 'w-2/3' : 'w-full'} ${isEventOver ? 'bg-gray-500' : (isRegistered ? 'bg-green-600' : 'bg-green-600 hover:bg-green-700')} text-white py-3 rounded-lg font-semibold shadow-lg transition duration-300 disabled:bg-gray-400 disabled:opacity-70">
-                                ${isEventOver ? 'Kegiatan Berakhir' : (isRegistered ? 'Anda Sudah Terdaftar' : 'Daftar Sekarang')}
-                            </button>
-                            ${event.materials_link ? `<a href="${event.materials_link}" target="_blank" rel="noopener noreferrer" class="w-1/3 bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold shadow-lg transition duration-300 text-center flex items-center justify-center">Materi</a>` : ''}
-                        </div>
-                        <div class="p-6">
-                            <h1 class="text-3xl font-bold text-gray-800 mb-3">${event.title}</h1>
-                            <p class="text-gray-600 text-lg mb-2"><span class="font-semibold">Tanggal:</span> ${formatDate(event.date)}</p>
-                            <p class="text-gray-600 text-lg mb-4"><span class="font-semibold">Lokasi:</span> ${event.location}</p>
-                            ${event.google_map_link ? `
-                            <a href="${event.google_map_link}" target="_blank" rel="noopener noreferrer" 
-                            class="mb-4 mt-2 flex items-center justify-center w-full px-4 py-3 border-2 border-green-600 text-green-700 rounded-lg hover:bg-green-50 transition font-bold shadow-sm group">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
-                                </svg>
-                                Lihat Lokasi di Peta
-                            </a>` : ''}
-                            <p class="text-gray-700 mb-6">${event.description}</p>
-                            
-                            <!-- RUNDOWN SECTION -->
-                            ${rundownHTML}
-
-                            <div class="mt-6"><p id="register-event-status" class="text-center mt-3"></p></div>
-                        </div>
-                    </div>`;
-
-                document.getElementById('detail-back-button').addEventListener('click', showEventList);
-                const registerBtn = document.getElementById('register-event-button');
-                if (!isRegistered && !isEventOver) { registerBtn.addEventListener('click', () => handleEventRegistration(eventId)); }
-            } catch (err) { console.error("Error fetching event detail:", err); mainContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat detail event.</p>'; }
+            });
         }
 
-        async function handleEventRegistration(eventId) {
-            const button = document.getElementById('register-event-button');
-            const status = document.getElementById('register-event-status');
-            setButtonLoading(button, true); status.textContent = '';
-            try {
-                const event = (await supabase.from('events').select('id, title').eq('id', eventId).single()).data;
-                const registrationData = { event_id: event.id, event_title: event.title, user_id: userProfile.user_id, name: userProfile.name, phone_number: userProfile.phone_number, registered_at: new Date().toISOString() };
-                const { error } = await supabase.from('registrations').insert([registrationData]);
-                if (error) throw error;
-                setButtonLoading(button, true); button.disabled = true; button.textContent = 'Anda Sudah Terdaftar';
-                button.classList.remove('bg-green-600', 'hover:bg-green-700'); button.classList.add('bg-green-600', 'disabled:opacity-100');
-                status.textContent = 'Pendaftaran berhasil!'; status.classList.add('text-green-600');
-            } catch(err) { console.error("Error registering:", err); status.textContent = 'Gagal mendaftar. Coba lagi.'; status.classList.add('text-red-500'); setButtonLoading(button, false, 'Daftar Sekarang'); }
-        }
-
-        async function showProfilePage_v2() {
-            document.getElementById('main-nav-tabs').classList.add('hidden');
-            mainContent.innerHTML = `
-                <button id="profile-back-button" class="text-green-600 mb-4 font-medium flex items-center hover:text-green-800 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>Kembali</button>
-                <div class="bg-white rounded-lg shadow-lg p-6 max-w-md mx-auto">
-                    <div class="flex flex-col items-center mt-2"><p class="text-sm font-medium text-gray-600 mb-3">ID Peserta Anda</p><div id="qr-code-container" class="p-2 bg-white border rounded-lg shadow-inner"></div></div>
-                    <div class="flex flex-col items-center mb-6"><h2 class="text-2xl font-bold text-gray-800">${userProfile.name}</h2></div>
-                    <div class="space-y-3"><div class="flex justify-between"><span class="text-gray-600 font-medium">Nomor WA:</span><span class="text-gray-800">${userProfile.phone_number}</span></div><div class="flex justify-between"><span class="text-gray-600 font-medium">Kecamatan:</span><span class="text-gray-800">${userProfile.kecamatan}</span></div><div class="flex justify-between"><span class="text-gray-600 font-medium">Kelurahan:</span><span class="text-gray-800">${userProfile.kelurahan}</span></div></div>
-                    <button id="profile-logout-button" class="w-full bg-red-500 text-white py-3 rounded-lg font-semibold shadow-lg hover:bg-red-600 transition duration-300 mt-8">Logout</button>
-                </div>`;
-            try {
-                const qrContainer = document.getElementById('qr-code-container');
-                if (qrContainer && userProfile && userProfile.user_id) {
-                    qrContainer.innerHTML = '';
-                    const canvas = document.createElement('canvas'); qrContainer.appendChild(canvas);
-                    await QRCode.toCanvas(canvas, userProfile.user_id, { width: 160, color: { dark: '#000000', light: '#FFFFFF' }, errorCorrectionLevel: 'H' });
-                }
-            } catch (err) { console.error("Gagal membuat QR Code:", err); const qrContainer = document.getElementById('qr-code-container'); if(qrContainer) qrContainer.innerHTML = "<p class='text-red-500 text-xs'>Gagal memuat QR Code.</p>"; }
-            document.getElementById('profile-back-button').addEventListener('click', showEventList);
-            document.getElementById('profile-logout-button').addEventListener('click', handleLogout);
-        }
-        profileButton.addEventListener('click', showProfilePage_v2);
-
-        mainContent.addEventListener('click', (e) => {
-            const eventCard = e.target.closest('.event-card');
-            if (eventCard) { showEventDetail_v2(eventCard.dataset.id); return; }
-            const deleteButton = e.target.closest('[data-action="delete-report"]');
-            if (deleteButton) { handleDeleteReport(deleteButton.dataset.id, deleteButton); return; }
-        });
-
-        // --- ADMIN PANEL ---
-        async function showAdminEventList() {
-            adminContent.innerHTML = '<div class="spinner mx-auto mt-10"></div>';
-            try {
-                const { data, error } = await supabase.from('events').select('*').order('date', { ascending: false });
-                if (error) throw error;
-                let eventCardsHTML = data.length > 0 ? data.map(event => `
-                    <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
-                        <h3 class="text-lg font-semibold text-green-700 mb-1">${event.title}</h3>
-                        <p class="text-sm text-gray-500 mb-2">${formatDate(event.date)} - ${event.location}</p>
-                        <div class="flex space-x-2">
-                            <button data-action="view-registrations" data-id="${event.id}" data-title="${encodeURIComponent(event.title)}" class="flex-1 bg-green-500 text-white py-2 px-3 rounded-lg text-sm font-semibold hover:bg-green-600 transition">Lihat Peserta</button>
-                            <button data-action="edit-event" data-id="${event.id}" class="flex-1 bg-yellow-500 text-white py-2 px-3 rounded-lg text-sm font-semibold hover:bg-yellow-600 transition">Edit Event</button>
-                        </div>
-                        <button data-action="manage-rundown" data-id="${event.id}" data-title="${encodeURIComponent(event.title)}" class="w-full mt-2 bg-purple-600 text-white py-2 px-3 rounded-lg text-sm font-semibold hover:bg-purple-700 transition flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            Atur Rundown
-                        </button>
-                    </div>`).join('') : `<div class="p-4 text-center text-gray-500 bg-gray-50 rounded-lg">Belum ada event yang dibuat.</div>`;
-
-                adminContent.innerHTML = `
-                    <div class="grid grid-cols-4 gap-2 mb-6">
-                        <!-- 1. Tombol Tambah Event -->
-                        <button id="navigate-add-event" class="flex flex-col items-center justify-center p-2 bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition h-20">
-                            <div class="bg-blue-100 p-2 rounded-full mb-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                            </div>
-                            <span class="text-[10px] font-semibold text-gray-700 text-center leading-tight">Buat Event</span>
-                        </button>
-
-                        <!-- 2. Tombol Tahsin -->
-                        <button id="navigate-tahsin-list" data-action="navigate-tahsin-list" class="flex flex-col items-center justify-center p-2 bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-orange-50 hover:border-orange-300 transition h-20">
-                            <div class="bg-orange-100 p-2 rounded-full mb-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                </svg>
-                            </div>
-                            <span class="text-[10px] font-semibold text-gray-700 text-center leading-tight">Tahsin</span>
-                        </button>
-
-                        <!-- 3. Tombol Laporan Hafalan -->
-                        <button id="navigate-report-list" data-action="navigate-report-list" class="flex flex-col items-center justify-center p-2 bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-purple-50 hover:border-purple-300 transition h-20">
-                            <div class="bg-purple-100 p-2 rounded-full mb-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                </svg>
-                            </div>
-                            <span class="text-[10px] font-semibold text-gray-700 text-center leading-tight">Laporan</span>
-                        </button>
-
-                        <!-- 4. Tombol User (BARU) -->
-                        <button id="navigate-user-list" data-action="navigate-user-list" class="flex flex-col items-center justify-center p-2 bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-teal-50 hover:border-teal-300 transition h-20">
-                            <div class="bg-teal-100 p-2 rounded-full mb-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                </svg>
-                            </div>
-                            <span class="text-[10px] font-semibold text-gray-700 text-center leading-tight">Data User</span>
-                        </button>
-                    </div>
-                    <div class="space-y-4">${eventCardsHTML}</div>`;
-                document.getElementById('navigate-add-event').addEventListener('click', showAddEventForm);
-                
-                document.getElementById('navigate-user-list').addEventListener('click', showAdminUserList);
-
-            } catch (err) { console.error("Error fetching admin events:", err); adminContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat event.</p>'; }
-        }
-
-        // --- RUNDOWN MANAGER FUNCTION (UPDATED) ---
-        async function showEventRundownManager(eventId, eventTitle) {
-            adminContent.innerHTML = '<div class="spinner mx-auto mt-10"></div>';
-            try {
-                const { data, error } = await supabase.from('event_rundowns').select('*').eq('event_id', eventId).order('start_time', { ascending: true });
-                if (error) throw error;
-                
-                let rundownListHTML = data.length > 0 ? data.map(item => `
-                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 flex justify-between items-start relative group">
-                        <div>
-                            <div class="flex items-center text-purple-700 font-bold text-sm"><span>${item.start_time}</span>${item.end_time ? `<span class="mx-1">-</span> <span>${item.end_time}</span>` : ''}</div>
-                            <h4 class="font-semibold text-gray-800">${item.activity}</h4>
-                            ${item.description ? `<p class="text-xs text-gray-600 mt-1">${item.description}</p>` : ''}
-                        </div>
-                        <div class="flex space-x-1">
-                            <button 
-                                data-action="edit-rundown" 
-                                data-id="${item.id}"
-                                data-start="${encodeURIComponent(item.start_time)}"
-                                data-end="${encodeURIComponent(item.end_time || '')}"
-                                data-activity="${encodeURIComponent(item.activity)}"
-                                data-desc="${encodeURIComponent(item.description || '')}"
-                                class="text-blue-500 hover:text-blue-700 p-1" title="Edit Agenda">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                            </button>
-                            <button 
-                                data-action="delete-rundown" 
-                                data-id="${item.id}" 
-                                data-event-id="${eventId}" 
-                                data-event-title="${eventTitle}" 
-                                class="text-red-500 hover:text-red-700 p-1" title="Hapus Agenda">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            </button>
-                        </div>
-                    </div>`).join('') : '<p class="text-center text-gray-500 text-sm py-4">Belum ada susunan acara.</p>';
-                
-                adminContent.innerHTML = `
-                    <button id="admin-back-button" class="text-green-600 mb-4 font-medium flex items-center hover:text-green-800 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>Kembali</button>
-                    <h2 class="text-xl font-bold text-gray-800 mb-1">Atur Rundown</h2><p class="text-sm text-gray-600 mb-6">${decodeURIComponent(eventTitle)}</p>
-                    
-                    <div class="bg-white p-4 rounded-lg shadow-md border mb-6">
-                        <div class="flex justify-between items-center mb-3">
-                            <h3 id="rundown-form-title" class="font-semibold text-gray-700">Tambah Agenda Baru</h3>
-                            <button id="cancel-edit-btn" class="text-sm text-red-500 hover:text-red-700 hidden">Batal Edit</button>
-                        </div>
-                        <form id="add-rundown-form" class="space-y-3" data-mode="add">
-                            <div class="grid grid-cols-2 gap-3">
-                                <div><label class="block text-xs font-medium text-gray-500">Mulai (Wajib)</label><input type="text" id="rd-start" name="start_time" placeholder="08:00" required class="mt-1 w-full px-3 py-2 border rounded-md text-sm focus:ring-purple-500 focus:border-purple-500"></div>
-                                <div><label class="block text-xs font-medium text-gray-500">Selesai (Opsional)</label><input type="text" id="rd-end" name="end_time" placeholder="09:00" class="mt-1 w-full px-3 py-2 border rounded-md text-sm focus:ring-purple-500 focus:border-purple-500"></div>
-                            </div>
-                            <div><label class="block text-xs font-medium text-gray-500">Nama Kegiatan</label><input type="text" id="rd-activity" name="activity" placeholder="Contoh: Registrasi Ulang" required class="mt-1 w-full px-3 py-2 border rounded-md text-sm focus:ring-purple-500 focus:border-purple-500"></div>
-                            <div><label class="block text-xs font-medium text-gray-500">Deskripsi (Opsional)</label><input type="text" id="rd-desc" name="description" placeholder="Keterangan tambahan..." class="mt-1 w-full px-3 py-2 border rounded-md text-sm focus:ring-purple-500 focus:border-purple-500"></div>
-                            <button type="submit" id="save-rundown-btn" class="w-full bg-purple-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-purple-700 transition">Tambahkan ke Rundown</button>
-                        </form>
-                    </div>
-                    <div class="space-y-3">${rundownListHTML}</div>`;
-                
-                document.getElementById('admin-back-button').addEventListener('click', showAdminEventList);
-                
-                // Form Submit Handler (Add or Update)
-                document.getElementById('add-rundown-form').addEventListener('submit', async (e) => {
-                    e.preventDefault(); 
-                    const btn = document.getElementById('save-rundown-btn'); 
-                    const form = e.target;
-                    const mode = form.dataset.mode;
-                    const editId = form.dataset.editId;
-                    
-                    btn.disabled = true; 
-                    btn.textContent = 'Menyimpan...';
-                    
-                    const formData = new FormData(e.target);
-                    const itemData = { 
-                        event_id: eventId, 
-                        start_time: formData.get('start_time'), 
-                        end_time: formData.get('end_time'), 
-                        activity: formData.get('activity'), 
-                        description: formData.get('description') 
-                    };
-                    
-                    try { 
-                        let error;
-                        if (mode === 'edit' && editId) {
-                            // Update Logic
-                            const { error: updateError } = await supabase.from('event_rundowns').update(itemData).eq('id', editId);
-                            error = updateError;
-                        } else {
-                            // Insert Logic
-                            const { error: insertError } = await supabase.from('event_rundowns').insert([itemData]);
-                            error = insertError;
-                        }
-
-                        if (error) throw error; 
-                        showEventRundownManager(eventId, eventTitle); 
-                    } catch(err) { 
-                        alert('Gagal menyimpan: ' + err.message); 
-                        btn.disabled = false; 
-                        btn.textContent = mode === 'edit' ? 'Update Agenda' : 'Tambahkan ke Rundown'; 
+        /**
+         * Mengaktifkan/menonaktifkan fungsi text collapse (accordion).
+         * @param {string} id - ID bagian yang akan di-toggle ('desc', 'summary', 'testi', 'location').
+         */
+        function toggleCollapse(id) {
+            const content = document.getElementById(`content-${id}`);
+            const icon = document.getElementById(`icon-${id}`);
+            
+            // Tutup semua accordion yang terbuka (agar hanya satu yang terbuka)
+            const openContents = document.querySelectorAll('[id^="content-"]:not(.hidden)');
+            openContents.forEach(c => {
+                if (c.id !== content.id) {
+                    c.classList.add('hidden');
+                    const otherIconId = 'icon-' + c.id.split('-')[1];
+                    const otherIconElement = document.getElementById(otherIconId);
+                    if (otherIconElement) {
+                        otherIconElement.style.transform = 'rotate(0deg)';
                     }
-                });
-
-                // Cancel Edit Handler
-                document.getElementById('cancel-edit-btn').addEventListener('click', () => {
-                    showEventRundownManager(eventId, eventTitle); // Reset view
-                });
-
-            } catch (err) { console.error("Error fetching rundown:", err); adminContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat rundown.</p>'; }
-        }
-
-        // Functions for other admin views (kept same structure)
-        function showAddEventForm() {
-            adminContent.innerHTML = `
-                <button id="admin-back-button" class="text-green-600 mb-4 font-medium flex items-center hover:text-green-800 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>Kembali ke Daftar Kegiatan</button>
-                <form id="add-event-form" class="bg-white p-6 rounded-lg shadow-inner border space-y-4"><h2 class="text-lg font-bold text-gray-800 mb-4">Tambah Event Baru</h2><div><label for="event-title" class="block text-sm font-medium text-gray-700">Nama Event</label><input type="text" name="title" id="event-title" required class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></div><div><label for="event-image_url" class="block text-sm font-medium text-gray-700">Image URL</label><input type="text" name="image_url" id="event-image_url" class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></div><div><label for="event-date" class="block text-sm font-medium text-gray-700">Tanggal Kegiatan</label><input type="date" name="date" id="event-date" required class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></div><div><label for="event-location" class="block text-sm font-medium text-gray-700">Lokasi Kegiatan</label><input type="text" name="location" id="event-location" required class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></div><div><label for="event-google_map_link" class="block text-sm font-medium text-gray-700">Link Google Map</label><input type="text" name="google_map_link" id="event-google_map_link" class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></div><div><label for="event-description" class="block text-sm font-medium text-gray-700">Deskripsi</label><textarea name="description" id="event-description" rows="4" required class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500"></textarea></div><div><label for="event-materials_link" class="block text-sm font-medium text-gray-700">Link Materi (Opsional)</label><input type="text" name="materials_link" id="event-materials_link" class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></div><p id="add-event-status" class="text-sm text-center"></p><button id="add-event-button" type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:bg-green-700 transition duration-300 disabled:bg-gray-400">Simpan Event</button></form>`;
-            document.getElementById('admin-back-button').addEventListener('click', showAdminEventList);
-            document.getElementById('add-event-form').addEventListener('submit', handleAddEventSubmit);
-        }
-
-        async function handleAddEventSubmit(e) {
-            e.preventDefault(); const form = e.target; const button = document.getElementById('add-event-button'); const status = document.getElementById('add-event-status');
-            setButtonLoading(button, true, 'Simpan Event'); status.textContent = '';
-            try { const formData = new FormData(form); const eventData = Object.fromEntries(formData.entries()); if (!eventData.title || !eventData.date || !eventData.location || !eventData.description) throw new Error("Nama, Tanggal, Lokasi, dan Deskripsi wajib diisi.");
-                const { error } = await supabase.from('events').insert([eventData]); if (error) throw error;
-                status.textContent = 'Event berhasil ditambahkan!'; status.classList.remove('text-red-500'); status.classList.add('text-green-600');
-                setTimeout(() => { showAdminEventList(); }, 2000);
-            } catch (err) { console.error("Error saving event:", err); status.textContent = "Gagal menyimpan event: " + err.message; status.classList.remove('text-green-600'); status.classList.add('text-red-500'); setButtonLoading(button, false, 'Simpan Event'); }
-        }
-
-        // --- UPDATED SHOW REGISTRATIONS (CARD & DOWNLOAD) ---
-        async function showEventRegistrations(eventId, eventTitle) {
-            adminContent.innerHTML = '<div class="spinner mx-auto mt-10"></div>';
-            try {
-                // Fetch registrations joined with profiles to get Kecamatan/Kelurahan
-                const { data, error } = await supabase
-                    .from('registrations')
-                    .select('*, profiles(kecamatan, kelurahan)')
-                    .eq('event_id', eventId)
-                    .order('updated_at', { ascending: true });
-
-                if (error) throw error;
-
-                // 1. Build List HTML
-                let participantListHTML = data.length > 0 ? data.map((reg, index) => {
-                    // Extract Profile Data
-                    const kecamatan = reg.profiles ? reg.profiles.kecamatan : '-';
-                    const kelurahan = reg.profiles ? reg.profiles.kelurahan : '-';
-
-                    return `
-                    <li class="py-3 px-4 border-b border-gray-200 flex items-center justify-between">
-                        <div class="flex items-center">
-                            <span class="text-sm font-medium text-gray-500 w-8">${index + 1}.</span>
-                            <div>
-                                <p class="font-semibold text-gray-800">${reg.name}</p>
-                                <p class="text-xs text-gray-500">${reg.phone_number}</p>
-                                <p class="text-xs text-gray-400 mt-1">${kelurahan}, ${kecamatan}</p>
-                            </div>
-                        </div>
-                        <div class="flex-shrink-0">
-                            ${reg.check_in === 'Hadir' 
-                                ? `<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Hadir</span>` 
-                                : `<button data-action="check-in" data-id="${reg.id}" class="check-in-button bg-green-500 text-white py-1 px-3 rounded-lg text-sm font-semibold hover:bg-green-600 transition">Check In</button>`}
-                        </div>
-                    </li>`;
-                }).join('') : '<li class="p-4 text-center text-gray-500">Belum ada peserta terdaftar.</li>';
-
-                // 2. Render Full View
-                adminContent.innerHTML = `
-                    <button id="admin-back-button" class="text-green-600 mb-4 font-medium flex items-center hover:text-green-800 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                        Kembali
-                    </button>
-                    
-                    <div class="bg-white p-6 rounded-lg shadow-inner border">
-                        <div class="mb-4">
-                            <h2 class="text-2xl font-bold text-gray-800 mb-1">Peserta Event</h2>
-                            <p class="text-lg text-gray-600 mb-4">${eventTitle}</p>
-                            
-                            <!-- CARD STATISTIK (POSISI BARU SCAN QR DIGANTI INI) -->
-                            <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg flex flex-col items-center justify-center mb-6">
-                                <p class="text-sm text-blue-600 font-semibold uppercase tracking-wide">Total Peserta Registrasi</p>
-                                <p class="text-4xl font-bold text-blue-800 mt-1">${data.length}</p>
-                            </div>
-
-                            <!-- TOMBOL SCAN & DOWNLOAD -->
-                            <div class="grid grid-cols-2 gap-3 mb-4">
-                                <button id="scan-qr-button" class="bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold shadow hover:bg-blue-700 transition flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
-                                    Scan QR
-                                </button>
-                                <button id="download-csv-button" class="bg-green-600 text-white py-3 px-4 rounded-lg font-semibold shadow hover:bg-green-700 transition flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                    Download Data
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- SCANNER AREA -->
-                        <div id="qr-scanner-container" class="hidden my-4 p-4 border rounded-lg bg-gray-100">
-                            <div id="qr-reader" style="width: 100%;"></div>
-                            <p id="qr-scan-feedback" class="text-center text-sm font-medium mt-2"></p>
-                            <button id="close-qr-scanner" class="w-full mt-2 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">Tutup Scanner</button>
-                        </div>
-
-                        <!-- LIST PESERTA -->
-                        <ul class="bg-gray-50 rounded-lg overflow-hidden border border-gray-200 divide-y divide-gray-200">
-                            ${participantListHTML}
-                        </ul>
-                    </div>`;
-
-                // 3. Event Listeners
-                document.getElementById('admin-back-button').addEventListener('click', showAdminEventList);
-                document.getElementById('scan-qr-button').addEventListener('click', () => { startQrScanner(data); });
-                document.getElementById('close-qr-scanner').addEventListener('click', stopQrScanner);
-                
-                // 4. Download Handler
-                document.getElementById('download-csv-button').addEventListener('click', () => {
-                    downloadParticipantsCSV(data, eventTitle);
-                });
-
-            } catch (err) { 
-                console.error("Error fetching registrations:", err); 
-                adminContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat data peserta.</p>'; 
-            }
-        }
-        
-        // --- CSV DOWNLOAD FUNCTION ---
-        function downloadParticipantsCSV(data, eventTitle) {
-            if (!data || data.length === 0) {
-                alert("Tidak ada data peserta untuk diunduh.");
-                return;
-            }
-
-            // CSV Header
-            let csvContent = "No,Nama Lengkap,Nomor WA,Kecamatan,Kelurahan,Status Check-in\n";
-
-            data.forEach((reg, index) => {
-                // Bersihkan data dari koma agar CSV tidak rusak
-                const name = reg.name ? reg.name.replace(/,/g, " ") : "";
-                // Format nomor WA agar terbaca sebagai teks di Excel (tambah tanda kutip satu)
-                const phone = reg.phone_number ? `'${reg.phone_number}` : "";
-                
-                // Ambil data dari join profiles
-                const kec = reg.profiles ? reg.profiles.kecamatan : "-";
-                const kel = reg.profiles ? reg.profiles.kelurahan : "-";
-                const status = reg.check_in || "Belum Hadir";
-
-                const row = `${index + 1},"${name}",${phone},${kec},${kel},${status}`;
-                csvContent += row + "\n";
+                }
             });
 
-            // Create Blob
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
+            // Toggle tampilan konten yang diklik
+            content.classList.toggle('hidden');
             
-            // Create Download Link
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            const fileName = `Peserta_${eventTitle.replace(/[^a-zA-Z0-9]/g, '_')}.csv`;
-            link.setAttribute("download", fileName);
-            link.style.visibility = 'hidden';
-            
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        async function showEditEventForm(eventId) {
-            adminContent.innerHTML = '<div class="spinner mx-auto mt-10"></div>';
-            try {
-                const { data: event, error } = await supabase.from('events').select('*').eq('id', eventId).single();
-                if (error) throw error;
-                adminContent.innerHTML = `<button id="admin-back-button" class="text-green-600 mb-4 font-medium flex items-center hover:text-green-800 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>Kembali ke Daftar Kegiatan</button><form id="edit-event-form" data-id="${event.id}" class="bg-white p-6 rounded-lg shadow-inner border space-y-4"><h2 class="text-2xl font-bold text-gray-800 mb-4">Edit Event</h2><div><label for="event-title" class="block text-sm font-medium text-gray-700">Nama Event</label><input type="text" name="title" id="event-title" required value="${event.title}" class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></div><div><label for="event-image_url" class="block text-sm font-medium text-gray-700">Image URL</label><input type="text" name="image_url" id="event-image_url" value="${event.image_url || ''}" class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></div><div><label for="event-date" class="block text-sm font-medium text-gray-700">Tanggal Kegiatan</label><input type="date" name="date" id="event-date" required value="${event.date}" class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></div><div><label for="event-location" class="block text-sm font-medium text-gray-700">Lokasi Kegiatan</label><input type="text" name="location" id="event-location" required value="${event.location}" class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></div><div><label for="event-google_map_link" class="block text-sm font-medium text-gray-700">Link Google Map</label><input type="text" name="google_map_link" id="event-google_map_link" value="${event.google_map_link || ''}" class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></div><div><label for="event-description" class="block text-sm font-medium text-gray-700">Deskripsi</label><textarea name="description" id="event-description" rows="4" required class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500">${event.description}</textarea></div><div><label for="event-materials_link" class="block text-sm font-medium text-gray-700">Link Materi (Opsional)</label><input type="text" name="materials_link" id="event-materials_link" value="${event.materials_link || ''}" class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></div><p id="edit-event-status" class="text-sm text-center"></p><button id="edit-event-button" type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:bg-green-700 transition duration-300 disabled:bg-gray-400">Update Event</button></form>`;
-                document.getElementById('admin-back-button').addEventListener('click', showAdminEventList);
-                document.getElementById('edit-event-form').addEventListener('submit', handleEditEventSubmit);
-            } catch (err) { console.error("Error fetching event for edit:", err); adminContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat data event.</p>'; }
-        }
-
-        async function handleEditEventSubmit(e) {
-            e.preventDefault(); const form = e.target; const eventId = form.dataset.id; const button = document.getElementById('edit-event-button'); const status = document.getElementById('edit-event-status');
-            setButtonLoading(button, true, 'Update Event'); status.textContent = '';
-            try { const formData = new FormData(form); const eventData = Object.fromEntries(formData.entries());
-                const { error } = await supabase.from('events').update(eventData).eq('id', eventId); if (error) throw error;
-                status.textContent = 'Event berhasil diperbarui!'; status.classList.remove('text-red-500'); status.classList.add('text-green-600');
-                setTimeout(() => { showAdminEventList(); }, 2000);
-            } catch (err) { console.error("Error updating event:", err); status.textContent = "Gagal memperbarui event: " + err.message; status.classList.remove('text-green-600'); status.classList.add('text-red-500'); setButtonLoading(button, false, 'Update Event'); }
-        }
-
-        async function showAdminTahsinList() {
-            adminContent.innerHTML = '<div class="spinner mx-auto mt-10"></div>';
-            try {
-                const { data, error } = await supabase.from('course').select('*').order('created_at', { ascending: false }); if (error) throw error;
-
-                let courseCardsHTML = data.length > 0 ? data.map(course => `
-                    <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200 relative">
-                        <h3 class="text-lg font-semibold text-green-700 mb-1 pr-16">${course.course_title}</h3>
-                        <p class="text-sm text-gray-500 mb-2">Dibuat: ${new Date(course.created_at).toLocaleString('id-ID')}</p>
-                        <p class="text-sm text-gray-700 line-clamp-2 mb-3">${course.description || 'Tidak ada deskripsi.'}</p>
-                        
-                        <div class="flex justify-between items-center mt-2">
-                            ${course.course_link ? `<a href="${course.course_link}" target="_blank" rel="noopener noreferrer" class="text-green-600 hover:underline text-sm font-semibold">Buka Link Materi</a>` : `<span class="text-xs text-gray-400">Tanpa Link</span>`}
-                            
-                            <div class="flex space-x-2">
-                                <button data-action="edit-tahsin" data-id="${course.id}" class="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Edit Materi">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                </button>
-                                <button data-action="delete-tahsin" data-id="${course.id}" class="p-1 text-red-600 hover:bg-red-50 rounded" title="Hapus Materi">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>`).join('') 
-                    : `<div class="p-4 text-center text-gray-500 bg-gray-50 rounded-lg">Belum ada materi tahsin.</div>`;
-
-                adminContent.innerHTML = `<button id="admin-back-button" class="text-green-600 mb-4 font-medium flex items-center hover:text-green-800 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>Kembali ke Panel Admin</button><div class="flex justify-between items-center mb-4"><h2 class="text-lg font-bold text-gray-800">Materi Tahsin</h2><button id="navigate-add-tahsin" data-action="navigate-add-tahsin" class="bg-green-600 text-white py-2 px-4 rounded-lg font-semibold shadow-lg hover:bg-green-700 transition duration-300">+ Tambah</button></div><div class="space-y-4">${courseCardsHTML}</div>`;
-                document.getElementById('admin-back-button').addEventListener('click', showAdminEventList);
-            } catch (err) { console.error("Error fetching admin courses:", err); adminContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat materi tahsin.</p>'; }
-        }
-
-        function showAddTahsinForm() {
-            adminContent.innerHTML = `<button id="admin-back-tahsin-button" class="text-green-600 mb-4 font-medium flex items-center hover:text-green-800 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>Kembali ke Daftar Materi</button><form id="add-tahsin-form" class="bg-white p-6 rounded-lg shadow-inner border space-y-4"><h2 class="text-2xl font-bold text-gray-800 mb-4">Tambah Materi Tahsin Baru</h2><div><label for="course-title" class="block text-sm font-medium text-gray-700">Nama Tahsin (Judul)</label><input type="text" name="course_title" id="course-title" required class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></div><div><label for="course-description" class="block text-sm font-medium text-gray-700">Deskripsi</label><textarea name="description" id="course-description" rows="4" class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500"></textarea></div><div><label for="course-link" class="block text-sm font-medium text-gray-700">Link Materi (Google Drive, YouTube, dll)</label><input type="text" name="course_link" id="course-link" class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></div><p id="add-tahsin-status" class="text-sm text-center"></p><button id="add-tahsin-button" type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:bg-green-700 transition duration-300 disabled:bg-gray-400">Simpan Materi</button></form>`;
-            document.getElementById('admin-back-tahsin-button').addEventListener('click', showAdminTahsinList);
-            document.getElementById('add-tahsin-form').addEventListener('submit', handleAddTahsinSubmit);
-        }
-
-        async function handleAddTahsinSubmit(e) {
-            e.preventDefault(); const form = e.target; const button = document.getElementById('add-tahsin-button'); const status = document.getElementById('add-tahsin-status');
-            setButtonLoading(button, true, 'Simpan Materi'); status.textContent = '';
-            try { const formData = new FormData(form); const courseData = Object.fromEntries(formData.entries()); if (!courseData.course_title) throw new Error("Nama Tahsin (Judul) wajib diisi.");
-                const { error } = await supabase.from('course').insert([courseData]); if (error) throw error;
-                status.textContent = 'Materi berhasil ditambahkan!'; status.classList.remove('text-red-500'); status.classList.add('text-green-600');
-                setTimeout(() => { showAdminTahsinList(); }, 2000);
-            } catch (err) { console.error("Error saving course:", err); status.textContent = "Gagal menyimpan materi: " + err.message; status.classList.remove('text-green-600'); status.classList.add('text-red-500'); setButtonLoading(button, false, 'Simpan Materi'); }
-        }
-
-        // --- Fungsi Edit Tahsin ---
-
-        async function showEditTahsinForm(id) {
-            adminContent.innerHTML = '<div class="spinner mx-auto mt-10"></div>';
-            try {
-                // Ambil data course berdasarkan ID
-                const { data: course, error } = await supabase.from('course').select('*').eq('id', id).single();
-                if (error) throw error;
-
-                adminContent.innerHTML = `
-                    <button id="admin-back-tahsin-button" class="text-green-600 mb-4 font-medium flex items-center hover:text-green-800 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                        Batal Edit
-                    </button>
-                    
-                    <form id="edit-tahsin-form" data-id="${course.id}" class="bg-white p-6 rounded-lg shadow-inner border space-y-4">
-                        <h2 class="text-2xl font-bold text-gray-800 mb-4">Edit Materi Tahsin</h2>
-                        
-                        <div>
-                            <label for="course-title" class="block text-sm font-medium text-gray-700">Nama Tahsin (Judul)</label>
-                            <input type="text" name="course_title" id="course-title" value="${course.course_title}" required class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-                        </div>
-                        
-                        <div>
-                            <label for="course-description" class="block text-sm font-medium text-gray-700">Deskripsi</label>
-                            <textarea name="description" id="course-description" rows="4" class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500">${course.description || ''}</textarea>
-                        </div>
-                        
-                        <div>
-                            <label for="course-link" class="block text-sm font-medium text-gray-700">Link Materi</label>
-                            <input type="text" name="course_link" id="course-link" value="${course.course_link || ''}" class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-                        </div>
-                        
-                        <p id="edit-tahsin-status" class="text-sm text-center"></p>
-                        <button id="edit-tahsin-button" type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:bg-green-700 transition duration-300">
-                            Update Materi
-                        </button>
-                    </form>`;
-
-                document.getElementById('admin-back-tahsin-button').addEventListener('click', showAdminTahsinList);
-                document.getElementById('edit-tahsin-form').addEventListener('submit', handleEditTahsinSubmit);
-
-            } catch (err) {
-                console.error("Error loading tahsin for edit:", err);
-                adminContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat data materi.</p>';
+            // Toggle rotasi ikon panah
+            if (content.classList.contains('hidden')) {
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                icon.style.transform = 'rotate(180deg)';
             }
         }
 
-        async function handleEditTahsinSubmit(e) {
-            e.preventDefault();
-            const form = e.target;
-            const id = form.dataset.id;
-            const button = document.getElementById('edit-tahsin-button');
-            const status = document.getElementById('edit-tahsin-status');
-
-            setButtonLoading(button, true, 'Update Materi');
-            status.textContent = '';
-
-            try {
-                const formData = new FormData(form);
-                const updates = {
-                    course_title: formData.get('course_title'),
-                    description: formData.get('description'),
-                    course_link: formData.get('course_link')
-                };
-
-                const { error } = await supabase.from('course').update(updates).eq('id', id);
-                if (error) throw error;
-
-                status.textContent = 'Materi berhasil diperbarui!';
-                status.className = 'text-sm text-center text-green-600';
-                setTimeout(showAdminTahsinList, 1500);
-
-            } catch (err) {
-                console.error("Error updating tahsin:", err);
-                status.textContent = "Gagal update: " + err.message;
-                status.className = 'text-sm text-center text-red-500';
-                setButtonLoading(button, false, 'Update Materi');
-            }
-        }
-
-        async function handleAddSetoranSubmit(e) {
-            e.preventDefault(); const surahName = document.getElementById('surah-name').value; const totalAyat = document.getElementById('total-ayat').value;
-            if (!surahName || !totalAyat) { showError(setoranStatus, "Nama Surah dan Jumlah Ayat wajib diisi."); return; }
-            setButtonLoading(setoranSubmitButton, true, 'Simpan'); clearError(setoranStatus);
-            try { const reportData = { user_id: userProfile.user_id, surah_name: surahName, total_ayat: parseInt(totalAyat, 10) };
-                const { error } = await supabase.from('report').insert([reportData]); if (error) throw error;
-                hideSetoranModal(); showSetoranPage();
-            } catch (err) { console.error("Error saving report:", err); showError(setoranStatus, "Gagal menyimpan: " + err.message); } finally { setButtonLoading(setoranSubmitButton, false, 'Simpan'); }
-        }
-
-        async function handleDeleteReport(reportId, button) {
-            button.disabled = true; button.innerHTML = '<div class="spinner mx-auto" style="width: 16px; height: 16px; border-left-color: #DC2626;"></div>';
-            try { const { error } = await supabase.from('report').delete().eq('id', reportId); if (error) throw error;
-                const card = button.closest('.report-card'); if (card) { card.classList.add('opacity-0', 'transition-opacity', 'duration-300'); setTimeout(() => { card.remove(); const remainingCards = document.querySelectorAll('.report-card'); if (remainingCards.length === 0) showSetoranPage(); }, 300); }
-            } catch (err) { console.error("Error deleting report:", err); button.disabled = false; button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>'; }
-        }
-
-        async function showAdminReportList(startDate = '', endDate = '') {
-            adminContent.innerHTML = '<div class="spinner mx-auto mt-10"></div>';
-            
-            try {
-                // 1. Build Query dengan Filter Tanggal
-                let query = supabase
-                    .from('report')
-                    .select('*, profiles(name, phone_number)')
-                    .order('created_at', { ascending: false });
-
-                if (startDate) {
-                    query = query.gte('created_at', startDate + 'T00:00:00');
-                }
-                if (endDate) {
-                    query = query.lte('created_at', endDate + 'T23:59:59');
-                }
-
-                const { data, error } = await query;
-                if (error) throw error;
-
-                // 2. Hitung Statistik Global
-                const totalAyatGlobal = data.reduce((acc, report) => acc + (report.total_ayat || 0), 0);
-                const uniqueSurahNamesGlobal = new Set(data.map(report => report.surah_name));
-                
-                // 3. Proses Agregasi Data User untuk TOP 3
-                // Kita butuh mengelompokkan laporan berdasarkan user_id
-                const userStats = {};
-
-                data.forEach(report => {
-                    const userId = report.user_id;
-                    const userName = report.profiles ? report.profiles.name : 'Tanpa Nama';
-                    
-                    if (!userStats[userId]) {
-                        userStats[userId] = {
-                            name: userName,
-                            totalAyat: 0,
-                            uniqueSurahs: new Set() // Menggunakan Set agar surat yang sama tidak dihitung 2x untuk kategori "Surat Terbanyak"
-                        };
-                    }
-                    
-                    userStats[userId].totalAyat += (report.total_ayat || 0);
-                    userStats[userId].uniqueSurahs.add(report.surah_name);
-                });
-
-                // Konversi Object ke Array agar bisa di-sort
-                const leaderboard = Object.values(userStats).map(u => ({
-                    name: u.name,
-                    totalAyat: u.totalAyat,
-                    totalSurah: u.uniqueSurahs.size
-                }));
-
-                // Cari Top 3 Ayat Terbanyak
-                const topAyat = [...leaderboard].sort((a, b) => b.totalAyat - a.totalAyat).slice(0, 3);
-                
-                // Cari Top 3 Surat Terbanyak (Unik)
-                const topSurah = [...leaderboard].sort((a, b) => b.totalSurah - a.totalSurah).slice(0, 3);
-
-                // Helper untuk merender list Top 3
-                const renderTopList = (list, type) => {
-                    if (list.length === 0) return '<p class="text-xs text-gray-400 italic">Belum ada data</p>';
-                    return list.map((item, index) => {
-                        const medal = index === 0 ? '🥇' : (index === 1 ? '🥈' : '🥉');
-                        const count = type === 'ayat' ? item.totalAyat : item.totalSurah;
-                        const label = type === 'ayat' ? 'Ayat' : 'Surat';
-                        const colorClass = index === 0 ? 'text-yellow-600' : (index === 1 ? 'text-gray-600' : 'text-orange-700');
-                        
-                        return `
-                        <div class="flex justify-between items-center py-1 border-b last:border-0 border-gray-100">
-                            <div class="flex items-center">
-                                <span class="mr-2 text-lg">${medal}</span>
-                                <span class="text-sm font-semibold text-gray-700 truncate max-w-[120px]">${item.name}</span>
-                            </div>
-                            <span class="text-sm font-bold ${colorClass}">${count} ${label}</span>
-                        </div>`;
-                    }).join('');
-                };
-
-                // 4. Render HTML List Laporan (Data Mentah)
-                let reportCardsHTML = data.length > 0 ? data.map(report => `
-                    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="text-md font-bold text-green-700">${report.surah_name}</h3>
-                                <p class="text-sm text-gray-600 font-medium">${report.profiles ? report.profiles.name : 'Nama Tidak Ditemukan'}</p>
-                            </div>
-                            <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-bold">
-                                ${report.total_ayat} Ayat
-                            </span>
-                        </div>
-                        <p class="text-xs text-gray-400 mt-2 flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            ${new Date(report.created_at).toLocaleString('id-ID')}
-                        </p>
-                    </div>`).join('') 
-                    : `<div class="p-4 text-center text-gray-500 bg-gray-50 rounded-lg">Belum ada laporan pada periode ini.</div>`;
-
-                // 5. Render Full HTML
-                adminContent.innerHTML = `
-                    <button id="admin-back-button" class="text-green-600 mb-4 font-medium flex items-center hover:text-green-800 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                        Kembali ke Panel Admin
-                    </button>
-                    
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Laporan Hafalan</h2>
-
-                    <!-- FILTER DATE SECTION -->
-                    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-                        <p class="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Filter Tanggal</p>
-                        <div class="flex flex-col sm:flex-row gap-3 items-end">
-                            <div class="w-full">
-                                <label class="text-xs text-gray-500">Dari</label>
-                                <input type="date" id="filter-start-date" value="${startDate}" class="w-full px-3 py-2 border rounded-md text-sm">
-                            </div>
-                            <div class="w-full">
-                                <label class="text-xs text-gray-500">Sampai</label>
-                                <input type="date" id="filter-end-date" value="${endDate}" class="w-full px-3 py-2 border rounded-md text-sm">
-                            </div>
-                            <button id="apply-filter-btn" class="w-full sm:w-auto bg-green-600 text-white px-4 py-2 rounded-md text-sm font-bold hover:bg-green-700 transition">
-                                Terapkan
-                            </button>
-                            ${(startDate || endDate) ? `<button id="reset-filter-btn" class="w-full sm:w-auto bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-bold hover:bg-gray-300 transition">Reset</button>` : ''}
-                        </div>
-                    </div>
-
-                    <!-- SUMMARY CARDS -->
-                    <div class="grid grid-cols-2 gap-4 mb-6">
-                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-100 text-center">
-                            <p class="text-xs font-bold text-purple-600 uppercase">Total Surat (Unik)</p>
-                            <p class="text-2xl font-bold text-purple-800">${uniqueSurahNamesGlobal.size}</p>
-                        </div>
-                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-100 text-center">
-                            <p class="text-xs font-bold text-purple-600 uppercase">Total Ayat</p>
-                            <p class="text-2xl font-bold text-purple-800">${totalAyatGlobal}</p>
-                        </div>
-                    </div>
-
-                    <!-- TOP 3 SECTION -->
-                    <div class="mb-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
-                            <span class="bg-yellow-100 text-yellow-800 p-1 rounded mr-2 text-sm">🏆</span>
-                            Top 3 Pejuang Hafalan
-                        </h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <!-- Top Ayat -->
-                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                                <p class="text-xs font-bold text-gray-500 mb-3 border-b pb-2 uppercase">Paling Banyak Ayat</p>
-                                <div class="space-y-2">
-                                    ${renderTopList(topAyat, 'ayat')}
-                                </div>
-                            </div>
-                            
-                            <!-- Top Surat -->
-                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                                <p class="text-xs font-bold text-gray-500 mb-3 border-b pb-2 uppercase">Paling Banyak Surat</p>
-                                <div class="space-y-2">
-                                    ${renderTopList(topSurah, 'surat')}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- REPORT LIST -->
-                    <h3 class="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wide">Riwayat Laporan Terbaru</h3>
-                    <div class="space-y-3">
-                        ${reportCardsHTML}
-                    </div>`;
-
-                // Event Listeners
-                document.getElementById('admin-back-button').addEventListener('click', showAdminEventList);
-                
-                document.getElementById('apply-filter-btn').addEventListener('click', () => {
-                    const start = document.getElementById('filter-start-date').value;
-                    const end = document.getElementById('filter-end-date').value;
-                    showAdminReportList(start, end);
-                });
-
-                if (document.getElementById('reset-filter-btn')) {
-                    document.getElementById('reset-filter-btn').addEventListener('click', () => {
-                        showAdminReportList(); // Panggil tanpa parameter untuk reset
-                    });
-                }
-
-            } catch (err) {
-                console.error("Error fetching admin reports:", err);
-                adminContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat laporan.</p>';
-            }
-        }
-
-        async function handleCheckIn(registrationId, button) {
-            button.disabled = true; button.innerHTML = '<div class="spinner mx-auto" style="width: 16px; height: 16px; border-left-color: white;"></div>';
-            try { const { data, error } = await supabase.from('registrations').update({ check_in: 'Hadir' }).eq('id', registrationId).select('updated_at').single();
-                if (error) throw error;
-                const statusSpan = document.createElement('span'); statusSpan.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800'; statusSpan.textContent = 'Hadir'; button.parentElement.replaceChild(statusSpan, button);
-                const updatedAtElement = document.getElementById(`updated-at-${registrationId}`); if (updatedAtElement && data.updated_at) { updatedAtElement.textContent = `Updated: ${new Date(data.updated_at).toLocaleString('id-ID')}`; }
-            } catch (err) { console.error("Error checking in:", err); button.disabled = false; button.textContent = 'Check In'; }
-        }
-
-        function startQrScanner(participants) {
-            const scannerContainer = document.getElementById('qr-scanner-container'); const feedbackEl = document.getElementById('qr-scan-feedback');
-            if (!scannerContainer || !feedbackEl) return;
-            scannerContainer.classList.remove('hidden'); feedbackEl.textContent = 'Arahkan kamera ke QR Code...'; feedbackEl.className = 'text-center text-sm font-medium mt-2 text-gray-700';
-            const participantMap = new Map(participants.map(p => [p.user_id, p]));
-            const onScanSuccess = (decodedText, decodedResult) => {
-                const registration = participantMap.get(decodedText);
-                if (registration) {
-                    const checkInButton = document.querySelector(`button[data-action='check-in'][data-id='${registration.id}']`);
-                    if (checkInButton) { handleCheckIn(registration.id, checkInButton); feedbackEl.textContent = `Berhasil check-in ${registration.name}!`; feedbackEl.className = 'text-center text-sm font-medium mt-2 text-green-600'; } 
-                    else { feedbackEl.textContent = `${registration.name} sudah Hadir.`; feedbackEl.className = 'text-center text-sm font-medium mt-2 text-green-600'; }
-                } else { feedbackEl.textContent = `Peserta (ID: ${decodedText.substring(0, 8)}...) tidak terdaftar di event ini.`; feedbackEl.className = 'text-center text-sm font-medium mt-2 text-red-600'; }
-            };
-            if (!html5QrCode) { html5QrCode = new window.Html5Qrcode("qr-reader"); }
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess, (error) => {}).catch(err => { console.error("Gagal memulai QR scanner:", err); feedbackEl.textContent = 'Gagal memulai kamera. Pastikan Anda memberi izin.'; feedbackEl.className = 'text-center text-sm font-medium mt-2 text-red-600'; });
-        }
-
-        function stopQrScanner() {
-            const scannerContainer = document.getElementById('qr-scanner-container'); if (scannerContainer) scannerContainer.classList.add('hidden');
-            if (html5QrCode) { html5QrCode.stop().then(() => { console.log("QR Scanner stopped."); }).catch(err => { console.error("Gagal menghentikan scanner:", err); }); }
-        }
-
-        loginForm.addEventListener('submit', handleLogin);
-        registerForm.addEventListener('submit', handleRegister);
-        document.getElementById('back-to-login-button').addEventListener('click', () => { showPage('login-page'); clearError(loginError); clearError(registerError); });
-        
-        document.getElementById('nav-tab-kegiatan').addEventListener('click', showEventList);
-        document.getElementById('nav-tab-tahsin').addEventListener('click', showTahsinPage);
-        document.getElementById('nav-tab-setoran').addEventListener('click', showSetoranPage);
-        // Tambahkan Listener untuk Tab Laporan
-        document.getElementById('nav-tab-laporan').addEventListener('click', showLaporanPage);
-
-        document.getElementById('admin-nav-button').addEventListener('click', () => { if (userProfile && userProfile.role === 'admin') { showAdminEventList(); showPage('admin-panel-page'); } });    
-        document.getElementById('admin-back-to-member-button').addEventListener('click', () => { showEventList(); showPage('main-app-page'); });
-        
-        // --- UPDATED EVENT LISTENER FOR RUNDOWN ACTIONS ---
-        adminContent.addEventListener('click', async (e) => {
-            const button = e.target.closest('button'); if (!button) return;
-            const action = button.dataset.action; const id = button.dataset.id;
-            
-            // FUNGSI MANAGE USER
-            if (action === 'view-registrations') { const title = decodeURIComponent(button.dataset.title); showEventRegistrations(id, title); } 
-            else if (action === 'edit-event') { showEditEventForm(id); } 
-            else if (action === 'check-in') { handleCheckIn(id, button); } 
-            else if (action === 'navigate-tahsin-list') { showAdminTahsinList(); } 
-            else if (action === 'navigate-add-tahsin') { showAddTahsinForm(); } 
-            else if (action === 'navigate-report-list') { showAdminReportList(); }
-
-            if (action === 'navigate-user-list') { 
-                showAdminUserList(); 
-            } 
-            else if (action === 'edit-user') { 
-                showEditUserForm(id); 
-            } 
-            else if (action === 'delete-user') {
-                const name = button.dataset.name;
-                if(confirm(`Yakin ingin menghapus user "${name}"? Data hafalan dan registrasi user ini juga mungkin akan terhapus.`)) {
-                    try {
-                        const { error } = await supabase.from('profiles').delete().eq('id', id);
-                        if (error) throw error;
-                        // Refresh list
-                        showAdminUserList();
-                    } catch(err) {
-                        alert("Gagal menghapus user: " + err.message);
-                    }
-                }
-            }
-
-            else if (action === 'edit-tahsin') {
-        showEditTahsinForm(id);
-    }
-    else if (action === 'delete-tahsin') {
-        if(confirm('Yakin ingin menghapus materi tahsin ini?')) {
-            try {
-                const { error } = await supabase.from('course').delete().eq('id', id);
-                if (error) throw error;
-                showAdminTahsinList(); // Refresh list
-            } catch(err) {
-                alert('Gagal menghapus materi: ' + err.message);
-            }
-        }
-    }
-
-            // FUNGSI MANAGE RUNDOWN
-            else if (action === 'manage-rundown') { const title = decodeURIComponent(button.dataset.title); showEventRundownManager(id, title); }
-            else if (action === 'delete-rundown') {
-                if(!confirm('Yakin ingin menghapus agenda ini?')) return;
-                const eventId = button.dataset.eventId; 
-                const eventTitle = button.dataset.eventTitle;
-                
-                try {
-                    const { error } = await supabase.from('event_rundowns').delete().eq('id', id);
-                    if (error) throw error;
-                    showEventRundownManager(eventId, eventTitle);
-                } catch(err) {
-                    alert('Gagal menghapus: ' + err.message);
-                }
-            } else if (action === 'edit-rundown') {
-                // Populate Form for Editing
-                const start = decodeURIComponent(button.dataset.start);
-                const end = decodeURIComponent(button.dataset.end);
-                const activity = decodeURIComponent(button.dataset.activity);
-                const desc = decodeURIComponent(button.dataset.desc);
-                
-                document.getElementById('rd-start').value = start;
-                document.getElementById('rd-end').value = end;
-                document.getElementById('rd-activity').value = activity;
-                document.getElementById('rd-desc').value = desc;
-                
-                // Set UI to Edit Mode
-                const form = document.getElementById('add-rundown-form');
-                form.dataset.mode = 'edit';
-                form.dataset.editId = id;
-                
-                document.getElementById('rundown-form-title').textContent = 'Edit Agenda';
-                document.getElementById('save-rundown-btn').textContent = 'Update Agenda';
-                document.getElementById('cancel-edit-btn').classList.remove('hidden');
-                
-                // Scroll to top
-                adminContent.scrollTop = 0;
-            }
-        });
-
-        setoranForm.addEventListener('submit', handleAddSetoranSubmit);
-        document.getElementById('close-setoran-modal').addEventListener('click', hideSetoranModal);
-        setoranModalBackdrop.addEventListener('click', hideSetoranModal);
-
-        function initializeApp() {
-            const savedProfileString = localStorage.getItem('userProfile');
-            if (savedProfileString) {
-                try { const profile = JSON.parse(savedProfileString); handleLoginSuccess(profile); } 
-                catch (e) { console.error("Gagal memuat sesi:", e); localStorage.removeItem('userProfile'); showPage('login-page'); }
-            } else { showPage('login-page'); }
-        }
-        document.addEventListener('DOMContentLoaded', initializeApp);
-
-        //KUMPULAN FUNGSI MANAJEMEN USER
-
-        async function showAdminUserList() {
-            adminContent.innerHTML = '<div class="spinner mx-auto mt-10"></div>';
-            try {
-                // Ambil semua data profil, urutkan berdasarkan nama
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .order('name', { ascending: true });
-
-                if (error) throw error;
-
-                let userListHTML = '';
-                
-                if (data.length > 0) {
-                    userListHTML = data.map((user, index) => {
-                        // Tentukan warna badge untuk role
-                        const roleBadgeColor = user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800';
-                        
-                        return `
-                        <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200 mb-3 relative">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <div class="flex items-center gap-2">
-                                        <h3 class="text-lg font-bold text-gray-800">${user.name}</h3>
-                                        <span class="text-xs px-2 py-0.5 rounded-full font-bold uppercase ${roleBadgeColor}">${user.role || 'user'}</span>
-                                    </div>
-                                    <p class="text-sm text-gray-600 mt-1">📞 ${user.phone_number}</p>
-                                    <p class="text-xs text-gray-500 mt-1">📍 ${user.kelurahan}, ${user.kecamatan}</p>
-                                </div>
-                            </div>
-                            
-                            <div class="mt-4 flex justify-end space-x-2 border-t pt-3">
-                                <button data-action="edit-user" data-id="${user.id}" class="text-blue-600 hover:text-blue-800 text-sm font-semibold flex items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg> 
-                                    Edit
-                                </button>
-                                <button data-action="delete-user" data-id="${user.id}" data-name="${user.name}" class="text-red-600 hover:text-red-800 text-sm font-semibold flex items-center ml-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    Hapus
-                                </button>
-                            </div>
-                        </div>`;
-                    }).join('');
-                } else {
-                    userListHTML = `<div class="p-4 text-center text-gray-500 bg-gray-50 rounded-lg">Belum ada data user.</div>`;
-                }
-
-                adminContent.innerHTML = `
-                    <button id="admin-back-button" class="text-green-600 mb-4 font-medium flex items-center hover:text-green-800 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                        Kembali ke Panel Admin
-                    </button>
-                    
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold text-gray-800">Data User (${data.length})</h2>
-                        <button id="add-user-btn" class="bg-teal-600 text-white py-2 px-4 rounded-lg font-semibold shadow hover:bg-teal-700 transition duration-300 text-sm">
-                            + Tambah User
-                        </button>
-                    </div>
-
-                    <div class="space-y-2">
-                        ${userListHTML}
-                    </div>`;
-
-                // Event Listeners
-                document.getElementById('admin-back-button').addEventListener('click', showAdminEventList);
-                document.getElementById('add-user-btn').addEventListener('click', showAddUserForm);
-
-            } catch (err) {
-                console.error("Error fetching users:", err);
-                adminContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat data user.</p>';
-            }
-        }
-
-        function showAddUserForm() {
-            adminContent.innerHTML = `
-                <button id="back-to-users" class="text-teal-600 mb-4 font-medium flex items-center hover:text-teal-800 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                    Kembali ke Data User
-                </button>
-                
-                <form id="add-user-form" class="bg-white p-6 rounded-lg shadow-inner border space-y-4">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Tambah User Baru</h2>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
-                        <input type="text" name="name" required class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500" />
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Nomor WA</label>
-                        <input type="tel" name="phone_number" required placeholder="08..." class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500" />
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Kecamatan</label>
-                            <input type="text" name="kecamatan" required class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Kelurahan</label>
-                            <input type="text" name="kelurahan" required class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500" />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Role</label>
-                        <select name="role" class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500">
-                            <option value="user">User (Member)</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
-
-                    <p id="user-form-status" class="text-sm text-center"></p>
-                    <button id="save-user-btn" type="submit" class="w-full bg-teal-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:bg-teal-700 transition duration-300">
-                        Simpan User
-                    </button>
-                </form>`;
-
-            document.getElementById('back-to-users').addEventListener('click', showAdminUserList);
-            document.getElementById('add-user-form').addEventListener('submit', handleAddUserSubmit);
-        }
-
-        async function handleAddUserSubmit(e) {
-            e.preventDefault();
-            const btn = document.getElementById('save-user-btn');
-            const status = document.getElementById('user-form-status');
-            
-            setButtonLoading(btn, true, 'Simpan User');
-            status.textContent = '';
-
-            const formData = new FormData(e.target);
-            // Generate random UUID untuk user_id
-            const newUserId = crypto.randomUUID();
-
-            const userData = {
-                user_id: newUserId,
-                name: formData.get('name'),
-                phone_number: formData.get('phone_number'),
-                kecamatan: formData.get('kecamatan'),
-                kelurahan: formData.get('kelurahan'),
-                role: formData.get('role'),
-                created_at: new Date().toISOString()
-            };
-
-            try {
-                const { error } = await supabase.from('profiles').insert([userData]);
-                if (error) {
-                    if (error.code === '23505') throw new Error("Nomor WA sudah terdaftar.");
-                    throw error;
-                }
-                
-                status.textContent = 'User berhasil ditambahkan!';
-                status.className = 'text-sm text-center text-green-600';
-                setTimeout(showAdminUserList, 1500);
-            } catch (err) {
-                status.textContent = 'Gagal: ' + err.message;
-                status.className = 'text-sm text-center text-red-500';
-                setButtonLoading(btn, false, 'Simpan User');
-            }
-        }
-
-        async function showEditUserForm(id) {
-            adminContent.innerHTML = '<div class="spinner mx-auto mt-10"></div>';
-            try {
-                // Ambil data user berdasarkan ID (Primary Key tabel profiles adalah 'id', bukan 'user_id' untuk update)
-                const { data: user, error } = await supabase.from('profiles').select('*').eq('id', id).single();
-                if (error) throw error;
-
-                adminContent.innerHTML = `
-                    <button id="back-to-users" class="text-teal-600 mb-4 font-medium flex items-center hover:text-teal-800 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                        Batal Edit
-                    </button>
-                    
-                    <form id="edit-user-form" data-id="${user.id}" class="bg-white p-6 rounded-lg shadow-inner border space-y-4">
-                        <h2 class="text-2xl font-bold text-gray-800 mb-4">Edit User</h2>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
-                            <input type="text" name="name" value="${user.name}" required class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500" />
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Nomor WA</label>
-                            <input type="tel" name="phone_number" value="${user.phone_number}" required class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500" />
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Kecamatan</label>
-                                <input type="text" name="kecamatan" value="${user.kecamatan}" required class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500" />
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Kelurahan</label>
-                                <input type="text" name="kelurahan" value="${user.kelurahan}" required class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500" />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Role</label>
-                            <select name="role" class="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500">
-                                <option value="user" ${user.role === 'user' ? 'selected' : ''}>User (Member)</option>
-                                <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
-                            </select>
-                        </div>
-
-                        <p id="user-form-status" class="text-sm text-center"></p>
-                        <button id="save-user-btn" type="submit" class="w-full bg-teal-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:bg-teal-700 transition duration-300">
-                            Update User
-                        </button>
-                    </form>`;
-
-                document.getElementById('back-to-users').addEventListener('click', showAdminUserList);
-                document.getElementById('edit-user-form').addEventListener('submit', handleEditUserSubmit);
-
-            } catch (err) {
-                console.error(err);
-                adminContent.innerHTML = '<p class="text-center text-red-500">Gagal memuat data user.</p>';
-            }
-        }
-
-        async function handleEditUserSubmit(e) {
-            e.preventDefault();
-            const form = e.target;
-            const id = form.dataset.id;
-            const btn = document.getElementById('save-user-btn');
-            const status = document.getElementById('user-form-status');
-            
-            setButtonLoading(btn, true, 'Update User');
-            status.textContent = '';
-
-            const formData = new FormData(form);
-            const updates = {
-                name: formData.get('name'),
-                phone_number: formData.get('phone_number'),
-                kecamatan: formData.get('kecamatan'),
-                kelurahan: formData.get('kelurahan'),
-                role: formData.get('role')
-            };
-
-            try {
-                const { error } = await supabase.from('profiles').update(updates).eq('id', id);
-                if (error) throw error;
-                
-                status.textContent = 'Data berhasil diperbarui!';
-                status.className = 'text-sm text-center text-green-600';
-                setTimeout(showAdminUserList, 1500);
-            } catch (err) {
-                status.textContent = 'Gagal update: ' + err.message;
-                status.className = 'text-sm text-center text-red-500';
-                setButtonLoading(btn, false, 'Update User');
-            }
-        }
+        // Inisialisasi Lucide Icons
+        window.onload = () => {
+            lucide.createIcons();
+        };
 
     </script>
 </body>
